@@ -567,6 +567,28 @@
             min-width: 150px;
         }
 
+        /* Search Container */
+        .search-container {
+            max-width: 400px;
+        }
+
+        .search-container .form-control {
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .search-container .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+        }
+
+        .search-container .form-control::placeholder {
+            color: #999;
+        }
+
         .stat-badge {
             display: inline-block;
             padding: 4px 12px;
@@ -836,6 +858,18 @@
             <div class="card">
                 <div class="card-body">
                     <h3 class="mb-4">All Purchase Slips</h3>
+
+                    <!-- Search Bar -->
+                    <div class="search-container mb-3">
+                        <input
+                            type="text"
+                            id="searchSlips"
+                            class="form-control"
+                            placeholder="🔍 Search by Party Name..."
+                            onkeyup="filterSlips()"
+                        >
+                    </div>
+
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
@@ -1571,6 +1605,54 @@
             } catch (error) {
                 console.error('Error loading slips:', error);
                 document.getElementById('slipsTableBody').innerHTML = '<tr><td colspan="11" class="text-center text-danger">Error loading slips</td></tr>';
+            }
+        }
+
+        function filterSlips() {
+            const searchInput = document.getElementById('searchSlips');
+            const filter = searchInput.value.toLowerCase().trim();
+            const table = document.getElementById('slipsTableBody');
+            const rows = table.getElementsByTagName('tr');
+            let visibleCount = 0;
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const partyNameCell = row.getElementsByTagName('td')[2]; // Party Name is the 3rd column (index 2)
+
+                if (partyNameCell) {
+                    const partyName = partyNameCell.textContent || partyNameCell.innerText;
+
+                    if (partyName.toLowerCase().indexOf(filter) > -1) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            }
+
+            // Show "No results" message if no matches found
+            if (filter !== '' && visibleCount === 0 && rows.length > 0) {
+                // Check if the first row is not already a "no slips" message
+                if (rows[0] && rows[0].cells.length > 1) {
+                    const noResultsRow = document.createElement('tr');
+                    noResultsRow.id = 'noResultsRow';
+                    noResultsRow.innerHTML = '<td colspan="9" class="text-center text-muted">No matching slips found for "' + searchInput.value + '"</td>';
+
+                    // Remove existing no results row if present
+                    const existingNoResults = document.getElementById('noResultsRow');
+                    if (existingNoResults) {
+                        existingNoResults.remove();
+                    }
+
+                    table.appendChild(noResultsRow);
+                }
+            } else {
+                // Remove no results row when results are found
+                const existingNoResults = document.getElementById('noResultsRow');
+                if (existingNoResults) {
+                    existingNoResults.remove();
+                }
             }
         }
 

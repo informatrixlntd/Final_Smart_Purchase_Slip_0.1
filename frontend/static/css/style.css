@@ -370,3 +370,25 @@ textarea.form-control {
 .tooltip-inner {
     background: #764ba2;
 }
+
+/* SEARCH CONTAINER */
+.search-container {
+    max-width: 400px;
+}
+
+.search-container .form-control {
+    padding: 10px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.search-container .form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+}
+
+.search-container .form-control::placeholder {
+    color: #999;
+}
