@@ -175,10 +175,37 @@ function createLocalBackupOnly(dbConfig) {
 }
 
 function startPythonBackend() {
-    const pythonScript = path.join(__dirname, '..', 'backend', 'app.py');
-    pythonProcess = spawn('python', [pythonScript], {
-        cwd: path.join(__dirname, '..')
-    });
+    // Check if packaged backend executable exists
+    const isPackaged = app.isPackaged;
+    let backendPath;
+
+    if (isPackaged) {
+        // In production, look for the packaged executable
+        if (process.platform === 'win32') {
+            backendPath = path.join(process.resourcesPath, 'backend', 'purchase_slips_backend.exe');
+        } else {
+            backendPath = path.join(process.resourcesPath, 'backend', 'purchase_slips_backend');
+        }
+
+        // Check if backend executable exists
+        if (fs.existsSync(backendPath)) {
+            console.log('Starting packaged backend:', backendPath);
+            pythonProcess = spawn(backendPath, [], {
+                cwd: path.join(process.resourcesPath, 'backend')
+            });
+        } else {
+            console.error('Backend executable not found:', backendPath);
+            dialog.showErrorBox('Backend Error', 'Backend executable not found. Please reinstall the application.');
+            return;
+        }
+    } else {
+        // In development, use Python script
+        const pythonScript = path.join(__dirname, '..', 'backend', 'app.py');
+        console.log('Starting development backend:', pythonScript);
+        pythonProcess = spawn('python', [pythonScript], {
+            cwd: path.join(__dirname, '..')
+        });
+    }
 
     pythonProcess.stdout.on('data', (data) => {
         console.log(`Backend: ${data}`);
@@ -186,6 +213,11 @@ function startPythonBackend() {
 
     pythonProcess.stderr.on('data', (data) => {
         console.error(`Backend Error: ${data}`);
+    });
+
+    pythonProcess.on('error', (error) => {
+        console.error('Backend process error:', error);
+        dialog.showErrorBox('Backend Error', `Failed to start backend: ${error.message}`);
     });
 
     setTimeout(() => {

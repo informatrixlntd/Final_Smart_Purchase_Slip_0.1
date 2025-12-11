@@ -1,15 +1,25 @@
 import mysql.connector
 from mysql.connector.pooling import MySQLConnectionPool
 import os
+import json
+
+# Load MySQL configuration from config file or environment
+def load_db_config():
+    config_file = os.path.join(os.path.dirname(__file__), '..', 'config.json')
+    if os.path.exists(config_file):
+        with open(config_file, 'r') as f:
+            config = json.load(f)
+            return config.get('database', {})
+    return {
+        'host': os.getenv('DB_HOST', 'localhost'),
+        'port': int(os.getenv('DB_PORT', 3306)),
+        'user': os.getenv('DB_USER', 'root'),
+        'password': os.getenv('DB_PASSWORD', 'root'),
+        'database': os.getenv('DB_NAME', 'purchase_slips_db')
+    }
 
 # MySQL Configuration
-DB_CONFIG = {
-    'host': 'localhost',
-    'port': 1396,
-    'user': 'root',
-    'password': 'root',
-    'database': 'purchase_slips_db'
-}
+DB_CONFIG = load_db_config()
 
 # Global connection pool
 connection_pool = None

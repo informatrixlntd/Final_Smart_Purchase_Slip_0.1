@@ -26,25 +26,45 @@
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "**/*",
+      "!node_modules",
+      "!dist"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist-backend",
+        "to": "backend",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../config.json",
+        "to": "config.json"
+      }
+    ],
     "win": {
       "target": "nsis",
-      "icon": "assets/spslogo1.png"
+      "icon": "assets/spslogo.png"
     },
     "mac": {
-      "icon": "assets/spslogo1.png"
+      "icon": "assets/spslogo.png"
     },
     "linux": {
-      "icon": "assets/spslogo1.png"
+      "icon": "assets/spslogo.png"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "installerIcon": "assets/spslogo.png",
+      "uninstallerIcon": "assets/spslogo.png",
+      "license": "../LICENSE.txt"
     }
   },
   "dependencies": {
     "googleapis": "^167.0.0",
-    "module-name": "^0.0.1-security"
+    "module-name": "^0.0.1-security",
+    "dotenv": "^16.0.0"
   }
 }

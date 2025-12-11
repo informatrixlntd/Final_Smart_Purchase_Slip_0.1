@@ -1,0 +1,17 @@
+{
+  "database": {
+    "host": "localhost",
+    "port": 3306,
+    "user": "root",
+    "password": "root",
+    "database": "purchase_slips_db"
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 5000
+  },
+  "app": {
+    "name": "Purchase Slips Manager",
+    "version": "1.0.0"
+  }
+}
