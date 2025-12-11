@@ -72,6 +72,48 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
 
+        /* HAMBURGER BUTTON */
+        .hamburger-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            width: 30px;
+            height: 30px;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+
+        .hamburger-btn span {
+            display: block;
+            width: 25px;
+            height: 3px;
+            background: white;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .hamburger-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .hamburger-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translate(6px, 6px);
+        }
+
+        .hamburger-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(6px, -6px);
+        }
+
         /* LAYOUT WITH LEFT SIDEBAR */
         .app-layout {
             display: flex;
@@ -87,6 +129,32 @@
             display: flex;
             flex-direction: column;
             padding: 20px 0;
+            transition: transform 0.3s ease, margin-left 0.3s ease;
+            z-index: 100;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-250px);
+            margin-left: -250px;
+        }
+
+        /* Sidebar Overlay */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 99;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+            opacity: 1;
         }
 
         .nav-item {
@@ -365,6 +433,26 @@
             border: none;
         }
 
+        /* TABLE COLUMN FIXES - NO WRAPPING */
+        table td {
+            vertical-align: middle;
+        }
+
+        /* Date column - no wrapping */
+        table td:nth-child(2) {
+            white-space: nowrap;
+        }
+
+        /* Actions column - keep buttons in one line */
+        table td:last-child {
+            white-space: nowrap;
+        }
+
+        table td:last-child .btn {
+            margin: 2px;
+            display: inline-block;
+        }
+
         /* BADGES */
         .badge {
             font-weight: 600;
@@ -501,11 +589,68 @@
             background: #fed7d7;
             color: #742a2a;
         }
+
+        /* RESPONSIVE DESIGN */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                left: 0;
+                top: 0;
+                height: 100%;
+                z-index: 1000;
+                box-shadow: 4px 0 15px rgba(0,0,0,0.2);
+            }
+
+            .sidebar.collapsed {
+                transform: translateX(-100%);
+            }
+
+            .main-content {
+                width: 100%;
+            }
+
+            .top-bar h1 {
+                font-size: 18px;
+            }
+
+            .hamburger-btn {
+                margin-right: 5px;
+            }
+
+            /* Make table horizontally scrollable on mobile */
+            .table-responsive {
+                overflow-x: auto;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .top-bar {
+                padding: 10px 15px;
+            }
+
+            .top-bar h1 {
+                font-size: 14px;
+            }
+
+            .user-info span {
+                display: none;
+            }
+
+            table td:last-child .btn {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.75rem;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="top-bar">
         <div class="logo-title">
+            <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <img src="assets/spslogo.png" alt="Smart Purchase Slip Logo">
             <h1>Smart Purchase Slip Manager</h1>
         </div>
@@ -516,6 +661,9 @@
     </div>
 
     <div class="app-layout">
+        <!-- Sidebar Overlay for Mobile -->
+        <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
         <!-- LEFT SIDEBAR NAVIGATION -->
         <div class="sidebar">
             <div class="nav-item active" onclick="switchTab('dashboard')">
@@ -1341,12 +1489,52 @@
                 document.getElementById('usersTab').classList.add('active');
                 loadAllUsers();
             }
+
+            // Auto-close sidebar on mobile after navigation
+            if (window.innerWidth <= 768) {
+                const sidebar = document.querySelector('.sidebar');
+                const hamburgerBtn = document.querySelector('.hamburger-btn');
+                const overlay = document.querySelector('.sidebar-overlay');
+
+                if (!sidebar.classList.contains('collapsed')) {
+                    sidebar.classList.add('collapsed');
+                    hamburgerBtn.classList.remove('active');
+                    overlay.classList.remove('active');
+                }
+            }
         }
 
         function logout() {
             localStorage.removeItem('user');
             ipcRenderer.send('logout');
         }
+
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const hamburgerBtn = document.querySelector('.hamburger-btn');
+            const overlay = document.querySelector('.sidebar-overlay');
+
+            sidebar.classList.toggle('collapsed');
+            hamburgerBtn.classList.toggle('active');
+
+            // Toggle overlay on mobile
+            if (window.innerWidth <= 768) {
+                overlay.classList.toggle('active');
+            }
+        }
+
+        // Close sidebar when clicking outside on mobile
+        window.addEventListener('resize', function() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            const hamburgerBtn = document.querySelector('.hamburger-btn');
+
+            if (window.innerWidth > 768) {
+                overlay.classList.remove('active');
+                sidebar.classList.remove('collapsed');
+                hamburgerBtn.classList.remove('active');
+            }
+        });
 
         async function loadAllSlips() {
             try {

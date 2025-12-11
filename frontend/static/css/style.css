@@ -221,6 +221,26 @@ textarea {
     background-color: var(--light-purple);
 }
 
+/* TABLE COLUMN FIXES - NO WRAPPING */
+.table td {
+    vertical-align: middle;
+}
+
+/* Date column - no wrapping */
+.table td:nth-child(2) {
+    white-space: nowrap;
+}
+
+/* Actions column - keep buttons in one line */
+.table td:last-child {
+    white-space: nowrap;
+}
+
+.table td:last-child .btn {
+    margin: 2px;
+    display: inline-block;
+}
+
 /* TEXT AREAS */
 textarea.form-control {
     resize: vertical;
