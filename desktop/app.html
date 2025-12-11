@@ -7,6 +7,7 @@
     <link rel="icon" type="image/png" href="assets/spslogo.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="http://localhost:5000/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* GLOBAL THEME VARIABLES */
         :root {
@@ -71,38 +72,60 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
 
-        /* MAIN CONTAINER */
-        .main-container {
-            padding: 30px;
+        /* LAYOUT WITH LEFT SIDEBAR */
+        .app-layout {
+            display: flex;
+            height: calc(100vh - 80px);
+            overflow: hidden;
         }
 
-        /* TAB NAVIGATION */
-        .tab-navigation {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-        }
-        .tab-btn {
-            padding: 12px 30px;
+        /* LEFT SIDEBAR NAVIGATION */
+        .sidebar {
+            width: 250px;
             background: white;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+        }
+
+        .nav-item {
+            padding: 15px 25px;
             cursor: pointer;
-            font-weight: 600;
             transition: all 0.3s;
+            border-left: 4px solid transparent;
             color: var(--text-primary);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
-        .tab-btn:hover {
-            border-color: #667eea;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+
+        .nav-item:hover {
+            background: var(--light-purple);
+            border-left-color: #667eea;
         }
-        .tab-btn.active {
+
+        .nav-item.active {
             background: var(--primary-gradient);
             color: white;
-            border-color: #667eea;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            border-left-color: #764ba2;
         }
+
+        .nav-icon {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+        }
+
+        /* MAIN CONTENT AREA */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            background: var(--bg-light);
+        }
+
         .tab-content {
             display: none;
         }
@@ -339,6 +362,136 @@
             padding: 6px 12px;
             border-radius: 6px;
         }
+        /* DASHBOARD STYLES */
+        .dashboard-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            transition: all 0.3s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .metric-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 10px 0 5px 0;
+        }
+
+        .metric-label {
+            font-size: 14px;
+            color: #718096;
+            font-weight: 600;
+        }
+
+        .metric-change {
+            font-size: 12px;
+            margin-top: 8px;
+            font-weight: 600;
+        }
+
+        .metric-change.positive {
+            color: #48bb78;
+        }
+
+        .metric-change.negative {
+            color: #f56565;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+        }
+
+        .dashboard-table {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .two-column-charts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .filter-bar {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .filter-bar select,
+        .filter-bar input {
+            padding: 8px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            min-width: 150px;
+        }
+
+        .stat-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .stat-badge.success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .stat-badge.warning {
+            background: #fef5e7;
+            color: #744210;
+        }
+
+        .stat-badge.danger {
+            background: #fed7d7;
+            color: #742a2a;
+        }
     </style>
 </head>
 <body>
@@ -353,17 +506,173 @@
         </div>
     </div>
 
-    <div class="main-container">
-        <div class="tab-navigation">
-            <button class="tab-btn active" onclick="switchTab('create')">Create New Slip</button>
-            <button class="tab-btn" onclick="switchTab('view')">View All Slips</button>
-            <button class="tab-btn" onclick="switchTab('users')">Manage Users</button>
+    <div class="app-layout">
+        <!-- LEFT SIDEBAR NAVIGATION -->
+        <div class="sidebar">
+            <div class="nav-item active" onclick="switchTab('dashboard')">
+                <span class="nav-icon">📊</span>
+                <span>Dashboard</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('create')">
+                <span class="nav-icon">➕</span>
+                <span>Create New Slip</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('view')">
+                <span class="nav-icon">📋</span>
+                <span>View All Slips</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('users')">
+                <span class="nav-icon">👥</span>
+                <span>Manage Users</span>
+            </div>
         </div>
 
-        <!-- CREATE TAB -->
-        <div id="createTab" class="tab-content active">
-            <iframe src="http://localhost:5000/" style="width:100%; height:85vh; border:none; background:white; border-radius:10px;"></iframe>
-        </div>
+        <!-- MAIN CONTENT AREA -->
+        <div class="main-content">
+            <!-- DASHBOARD TAB -->
+            <div id="dashboardTab" class="tab-content active">
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <label><strong>Period:</strong></label>
+                    <select id="dashboardPeriod" onchange="loadDashboardData()">
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month" selected>This Month</option>
+                        <option value="year">This Year</option>
+                        <option value="all">All Time</option>
+                    </select>
+                    <button class="btn btn-sm btn-primary" onclick="loadDashboardData()">🔄 Refresh</button>
+                </div>
+
+                <!-- SECTION 1: TOP METRICS -->
+                <div class="dashboard-metrics">
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">🌾</div>
+                        <div class="metric-label">Total Paddy Purchased</div>
+                        <div class="metric-value" id="totalPaddyQntl">0 Qntl</div>
+                        <div class="metric-change positive" id="paddyChange"></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #fef5e7; color: #744210;">💰</div>
+                        <div class="metric-label">Total Purchase Amount</div>
+                        <div class="metric-value" id="totalPurchaseAmount">₹0</div>
+                        <div class="metric-change" id="purchaseChange"></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #fed7d7; color: #742a2a;">📉</div>
+                        <div class="metric-label">Total Deductions</div>
+                        <div class="metric-value" id="totalDeductions">₹0</div>
+                        <div class="metric-change" id="deductionChange"></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #c6f6d5; color: #22543d;">💵</div>
+                        <div class="metric-label">Net Payable</div>
+                        <div class="metric-value" id="netPayable">₹0</div>
+                        <div class="metric-change" id="payableChange"></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #bee3f8; color: #2c5282;">✅</div>
+                        <div class="metric-label">Total Paid</div>
+                        <div class="metric-value" id="totalPaid">₹0</div>
+                        <div class="metric-change" id="paidChange"></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #feebc8; color: #7c2d12;">⏳</div>
+                        <div class="metric-label">Outstanding Balance</div>
+                        <div class="metric-value" id="totalOutstanding">₹0</div>
+                        <div class="metric-change" id="outstandingChange"></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #e9d8fd; color: #553c9a;">📊</div>
+                        <div class="metric-label">Avg Effective Rate</div>
+                        <div class="metric-value" id="avgEffectiveRate">₹0/Qntl</div>
+                        <div class="metric-change" id="rateChange"></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background: #fed7e2; color: #97266d;">📝</div>
+                        <div class="metric-label">Total Bills</div>
+                        <div class="metric-value" id="totalBills">0</div>
+                        <div class="metric-change" id="billsChange"></div>
+                    </div>
+                </div>
+
+                <!-- SECTION 2: PURCHASE ANALYTICS -->
+                <h4 class="mb-3" style="color: var(--text-primary); font-weight: 700;">📈 Purchase Analytics</h4>
+                <div class="two-column-charts">
+                    <div class="chart-container">
+                        <div class="chart-title">Daily Purchase Trend (Qntl)</div>
+                        <canvas id="dailyPurchaseChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Purchase Rate Trend (₹/Qntl)</div>
+                        <canvas id="rateTrendChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="two-column-charts">
+                    <div class="chart-container">
+                        <div class="chart-title">Deduction Breakdown</div>
+                        <canvas id="deductionChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Top 10 Suppliers by Quantity</div>
+                        <canvas id="topSuppliersChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- SECTION 3: PAYMENT DASHBOARD -->
+                <h4 class="mb-3 mt-4" style="color: var(--text-primary); font-weight: 700;">💳 Payment Dashboard</h4>
+                <div class="two-column-charts">
+                    <div class="chart-container">
+                        <div class="chart-title">Outstanding Ageing</div>
+                        <canvas id="ageingChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Payment Mode Split</div>
+                        <canvas id="paymentModeChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Outstanding Farmer-wise Table -->
+                <div class="dashboard-table">
+                    <div class="chart-title">Outstanding Payments by Farmer</div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Farmer Name</th>
+                                    <th class="text-end">Total Purchase</th>
+                                    <th class="text-end">Paid</th>
+                                    <th class="text-end">Outstanding</th>
+                                    <th>Last Payment</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="outstandingTableBody">
+                                <tr><td colspan="6" class="text-center">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- SECTION 4: GODOWN & STOCK -->
+                <h4 class="mb-3 mt-4" style="color: var(--text-primary); font-weight: 700;">🏢 Godown & Stock Dashboard</h4>
+                <div class="two-column-charts">
+                    <div class="chart-container">
+                        <div class="chart-title">Stock by Godown</div>
+                        <canvas id="godownStockChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Expected Rice Output</div>
+                        <canvas id="riceOutputChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CREATE TAB -->
+            <div id="createTab" class="tab-content">
+                <iframe src="http://localhost:5000/" style="width:100%; height:85vh; border:none; background:white; border-radius:10px;"></iframe>
+            </div>
 
         <!-- VIEW TAB -->
         <div id="viewTab" class="tab-content">
@@ -424,7 +733,8 @@
                 </div>
             </div>
         </div>
-    </div>
+        </div> <!-- Close main-content -->
+    </div> <!-- Close app-layout -->
 
     <!-- Enhanced View Slip Modal -->
     <div class="modal fade" id="viewSlipModal" tabindex="-1">
@@ -1003,18 +1313,22 @@
         }
 
         function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-            if (tab === 'create') {
-                document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+            if (tab === 'dashboard') {
+                document.querySelector('.nav-item:nth-child(1)').classList.add('active');
+                document.getElementById('dashboardTab').classList.add('active');
+                loadDashboardData();
+            } else if (tab === 'create') {
+                document.querySelector('.nav-item:nth-child(2)').classList.add('active');
                 document.getElementById('createTab').classList.add('active');
             } else if (tab === 'view') {
-                document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+                document.querySelector('.nav-item:nth-child(3)').classList.add('active');
                 document.getElementById('viewTab').classList.add('active');
                 loadAllSlips();
             } else if (tab === 'users') {
-                document.querySelector('.tab-btn:nth-child(3)').classList.add('active');
+                document.querySelector('.nav-item:nth-child(4)').classList.add('active');
                 document.getElementById('usersTab').classList.add('active');
                 loadAllUsers();
             }
@@ -1607,6 +1921,257 @@
                 }
             }
         }
+        // ==================== DASHBOARD FUNCTIONS ====================
+
+        let dashboardCharts = {};
+
+        async function loadDashboardData() {
+            try {
+                const period = document.getElementById('dashboardPeriod').value;
+                const response = await fetch(`http://localhost:5000/api/dashboard?period=${period}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    updateMetricsCards(data.metrics);
+                    updateCharts(data);
+                    updateOutstandingTable(data.outstanding);
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        function updateMetricsCards(metrics) {
+            document.getElementById('totalPaddyQntl').textContent = `${metrics.totalPaddyQntl.toFixed(2)} Qntl`;
+            document.getElementById('totalPurchaseAmount').textContent = `₹${metrics.totalPurchaseAmount.toFixed(2)}`;
+            document.getElementById('totalDeductions').textContent = `₹${metrics.totalDeductions.toFixed(2)}`;
+            document.getElementById('netPayable').textContent = `₹${metrics.netPayable.toFixed(2)}`;
+            document.getElementById('totalPaid').textContent = `₹${metrics.totalPaid.toFixed(2)}`;
+            document.getElementById('totalOutstanding').textContent = `₹${metrics.totalOutstanding.toFixed(2)}`;
+            document.getElementById('avgEffectiveRate').textContent = `₹${metrics.avgEffectiveRate.toFixed(2)}/Qntl`;
+            document.getElementById('totalBills').textContent = metrics.totalBills;
+        }
+
+        function updateCharts(data) {
+            // Daily Purchase Trend Chart
+            destroyChart('dailyPurchaseChart');
+            const dailyCtx = document.getElementById('dailyPurchaseChart').getContext('2d');
+            dashboardCharts['dailyPurchaseChart'] = new Chart(dailyCtx, {
+                type: 'line',
+                data: {
+                    labels: data.dailyPurchase.dates,
+                    datasets: [{
+                        label: 'Quantity (Qntl)',
+                        data: data.dailyPurchase.quantities,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            // Rate Trend Chart
+            destroyChart('rateTrendChart');
+            const rateCtx = document.getElementById('rateTrendChart').getContext('2d');
+            dashboardCharts['rateTrendChart'] = new Chart(rateCtx, {
+                type: 'line',
+                data: {
+                    labels: data.rateTrend.dates,
+                    datasets: [{
+                        label: 'Rate (₹/Qntl)',
+                        data: data.rateTrend.rates,
+                        borderColor: '#f6ad55',
+                        backgroundColor: 'rgba(246, 173, 85, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            // Deduction Breakdown Chart
+            destroyChart('deductionChart');
+            const deductionCtx = document.getElementById('deductionChart').getContext('2d');
+            dashboardCharts['deductionChart'] = new Chart(deductionCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.deductions.labels,
+                    datasets: [{
+                        label: 'Amount (₹)',
+                        data: data.deductions.amounts,
+                        backgroundColor: [
+                            '#fc8181',
+                            '#f6ad55',
+                            '#f6e05e',
+                            '#68d391',
+                            '#4fd1c5',
+                            '#63b3ed'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            // Top Suppliers Chart
+            destroyChart('topSuppliersChart');
+            const suppliersCtx = document.getElementById('topSuppliersChart').getContext('2d');
+            dashboardCharts['topSuppliersChart'] = new Chart(suppliersCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.topSuppliers.names,
+                    datasets: [{
+                        label: 'Quantity (Qntl)',
+                        data: data.topSuppliers.quantities,
+                        backgroundColor: '#667eea'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            // Outstanding Ageing Chart
+            destroyChart('ageingChart');
+            const ageingCtx = document.getElementById('ageingChart').getContext('2d');
+            dashboardCharts['ageingChart'] = new Chart(ageingCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['0-7 days', '7-30 days', '30-60 days', '60+ days'],
+                    datasets: [{
+                        data: data.ageing.amounts,
+                        backgroundColor: ['#48bb78', '#ed8936', '#f6e05e', '#fc8181']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true
+                }
+            });
+
+            // Payment Mode Chart
+            destroyChart('paymentModeChart');
+            const paymentCtx = document.getElementById('paymentModeChart').getContext('2d');
+            dashboardCharts['paymentModeChart'] = new Chart(paymentCtx, {
+                type: 'pie',
+                data: {
+                    labels: data.paymentMode.modes,
+                    datasets: [{
+                        data: data.paymentMode.amounts,
+                        backgroundColor: ['#667eea', '#48bb78', '#ed8936']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true
+                }
+            });
+
+            // Godown Stock Chart
+            destroyChart('godownStockChart');
+            const godownCtx = document.getElementById('godownStockChart').getContext('2d');
+            dashboardCharts['godownStockChart'] = new Chart(godownCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.godownStock.godowns,
+                    datasets: [{
+                        label: 'Stock (Qntl)',
+                        data: data.godownStock.quantities,
+                        backgroundColor: '#764ba2'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            // Rice Output Chart
+            destroyChart('riceOutputChart');
+            const riceCtx = document.getElementById('riceOutputChart').getContext('2d');
+            dashboardCharts['riceOutputChart'] = new Chart(riceCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Rice (67%)', 'Husk (22%)', 'Bran (10%)', 'Loss (1%)'],
+                    datasets: [{
+                        data: [
+                            data.metrics.totalPaddyQntl * 0.67,
+                            data.metrics.totalPaddyQntl * 0.22,
+                            data.metrics.totalPaddyQntl * 0.10,
+                            data.metrics.totalPaddyQntl * 0.01
+                        ],
+                        backgroundColor: ['#48bb78', '#ed8936', '#f6e05e', '#cbd5e0']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true
+                }
+            });
+        }
+
+        function destroyChart(chartId) {
+            if (dashboardCharts[chartId]) {
+                dashboardCharts[chartId].destroy();
+            }
+        }
+
+        function updateOutstandingTable(outstanding) {
+            const tbody = document.getElementById('outstandingTableBody');
+            if (!outstanding || outstanding.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center">No outstanding payments</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = outstanding.map(item => {
+                const statusClass = item.daysOverdue > 60 ? 'danger' : (item.daysOverdue > 30 ? 'warning' : 'success');
+                const statusText = item.daysOverdue > 60 ? 'Overdue' : (item.daysOverdue > 30 ? 'Due Soon' : 'Current');
+
+                return `
+                    <tr>
+                        <td>${item.farmerName}</td>
+                        <td class="text-end">₹${item.totalPurchase.toFixed(2)}</td>
+                        <td class="text-end">₹${item.totalPaid.toFixed(2)}</td>
+                        <td class="text-end"><strong>₹${item.outstanding.toFixed(2)}</strong></td>
+                        <td>${item.lastPaymentDate || 'N/A'}</td>
+                        <td class="text-center"><span class="stat-badge ${statusClass}">${statusText}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Load dashboard on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDashboardData();
+        });
+
     </script>
 </body>
 </html>

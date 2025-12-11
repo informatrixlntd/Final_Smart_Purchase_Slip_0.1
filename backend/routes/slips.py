@@ -851,3 +851,281 @@ def add_unloading_godown():
             cursor.close()
         if conn:
             conn.close()
+
+
+# ==================== DASHBOARD API ====================
+
+@slips_bp.route('/api/dashboard', methods=['GET'])
+def get_dashboard_data():
+    """Get comprehensive dashboard data with analytics"""
+    print("\n" + "="*60)
+    print("📊 GET /api/dashboard - Dashboard data request")
+    print("="*60)
+
+    conn = None
+    cursor = None
+    try:
+        period = request.args.get('period', 'month')
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Date filter based on period
+        date_filter = ""
+        if period == 'today':
+            date_filter = "AND DATE(date) = CURDATE()"
+        elif period == 'week':
+            date_filter = "AND date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)"
+        elif period == 'month':
+            date_filter = "AND date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)"
+        elif period == 'year':
+            date_filter = "AND date >= DATE_SUB(CURDATE(), INTERVAL 365 DAY)"
+
+        # ===== METRICS =====
+        cursor.execute(f'''
+            SELECT
+                COALESCE(SUM(weight_quintal), 0) as totalPaddyQntl,
+                COALESCE(SUM(total_purchase_amount), 0) as totalPurchaseAmount,
+                COALESCE(SUM(total_deduction), 0) as totalDeductions,
+                COALESCE(SUM(payable_amount), 0) as netPayable,
+                COUNT(*) as totalBills
+            FROM purchase_slips
+            WHERE 1=1 {date_filter}
+        ''')
+        metrics = cursor.fetchone()
+
+        # Calculate total paid from instalments
+        cursor.execute(f'''
+            SELECT COALESCE(SUM(
+                COALESCE(instalment_1_amount, 0) +
+                COALESCE(instalment_2_amount, 0) +
+                COALESCE(instalment_3_amount, 0) +
+                COALESCE(instalment_4_amount, 0) +
+                COALESCE(instalment_5_amount, 0)
+            ), 0) as totalPaid
+            FROM purchase_slips
+            WHERE 1=1 {date_filter}
+        ''')
+        paid_result = cursor.fetchone()
+        metrics['totalPaid'] = paid_result['totalPaid']
+        metrics['totalOutstanding'] = metrics['netPayable'] - metrics['totalPaid']
+
+        # Average effective rate
+        if metrics['totalPaddyQntl'] > 0:
+            metrics['avgEffectiveRate'] = metrics['netPayable'] / metrics['totalPaddyQntl']
+        else:
+            metrics['avgEffectiveRate'] = 0
+
+        # ===== DAILY PURCHASE TREND =====
+        cursor.execute(f'''
+            SELECT DATE(date) as purchase_date, SUM(weight_quintal) as total_qntl
+            FROM purchase_slips
+            WHERE 1=1 {date_filter}
+            GROUP BY DATE(date)
+            ORDER BY purchase_date
+            LIMIT 30
+        ''')
+        daily_data = cursor.fetchall()
+        daily_purchase = {
+            'dates': [row['purchase_date'].strftime('%Y-%m-%d') if row['purchase_date'] else '' for row in daily_data],
+            'quantities': [float(row['total_qntl']) if row['total_qntl'] else 0 for row in daily_data]
+        }
+
+        # ===== RATE TREND =====
+        cursor.execute(f'''
+            SELECT DATE(date) as purchase_date,
+                   AVG(payable_amount / NULLIF(weight_quintal, 0)) as avg_rate
+            FROM purchase_slips
+            WHERE weight_quintal > 0 {date_filter}
+            GROUP BY DATE(date)
+            ORDER BY purchase_date
+            LIMIT 30
+        ''')
+        rate_data = cursor.fetchall()
+        rate_trend = {
+            'dates': [row['purchase_date'].strftime('%Y-%m-%d') if row['purchase_date'] else '' for row in rate_data],
+            'rates': [float(row['avg_rate']) if row['avg_rate'] else 0 for row in rate_data]
+        }
+
+        # ===== DEDUCTION BREAKDOWN =====
+        cursor.execute(f'''
+            SELECT
+                SUM(moisture_ded) as moisture,
+                SUM(quality_diff) as quality,
+                SUM(dalali) as dalali,
+                SUM(hammali) as hammali,
+                SUM(bank_commission) as commission,
+                SUM(freight) as freight
+            FROM purchase_slips
+            WHERE 1=1 {date_filter}
+        ''')
+        deduction_data = cursor.fetchone()
+        deductions = {
+            'labels': ['Moisture', 'Quality', 'Dalali', 'Hammali', 'Commission', 'Freight'],
+            'amounts': [
+                float(deduction_data['moisture']) if deduction_data['moisture'] else 0,
+                float(deduction_data['quality']) if deduction_data['quality'] else 0,
+                float(deduction_data['dalali']) if deduction_data['dalali'] else 0,
+                float(deduction_data['hammali']) if deduction_data['hammali'] else 0,
+                float(deduction_data['commission']) if deduction_data['commission'] else 0,
+                float(deduction_data['freight']) if deduction_data['freight'] else 0
+            ]
+        }
+
+        # ===== TOP SUPPLIERS =====
+        cursor.execute(f'''
+            SELECT party_name, SUM(weight_quintal) as total_qntl
+            FROM purchase_slips
+            WHERE party_name IS NOT NULL {date_filter}
+            GROUP BY party_name
+            ORDER BY total_qntl DESC
+            LIMIT 10
+        ''')
+        supplier_data = cursor.fetchall()
+        top_suppliers = {
+            'names': [row['party_name'] for row in supplier_data],
+            'quantities': [float(row['total_qntl']) if row['total_qntl'] else 0 for row in supplier_data]
+        }
+
+        # ===== OUTSTANDING AGEING =====
+        cursor.execute(f'''
+            SELECT
+                SUM(CASE WHEN DATEDIFF(CURDATE(), date) <= 7 THEN (payable_amount -
+                    (COALESCE(instalment_1_amount, 0) + COALESCE(instalment_2_amount, 0) +
+                     COALESCE(instalment_3_amount, 0) + COALESCE(instalment_4_amount, 0) +
+                     COALESCE(instalment_5_amount, 0))) ELSE 0 END) as age_0_7,
+                SUM(CASE WHEN DATEDIFF(CURDATE(), date) > 7 AND DATEDIFF(CURDATE(), date) <= 30
+                    THEN (payable_amount - (COALESCE(instalment_1_amount, 0) + COALESCE(instalment_2_amount, 0) +
+                          COALESCE(instalment_3_amount, 0) + COALESCE(instalment_4_amount, 0) +
+                          COALESCE(instalment_5_amount, 0))) ELSE 0 END) as age_7_30,
+                SUM(CASE WHEN DATEDIFF(CURDATE(), date) > 30 AND DATEDIFF(CURDATE(), date) <= 60
+                    THEN (payable_amount - (COALESCE(instalment_1_amount, 0) + COALESCE(instalment_2_amount, 0) +
+                          COALESCE(instalment_3_amount, 0) + COALESCE(instalment_4_amount, 0) +
+                          COALESCE(instalment_5_amount, 0))) ELSE 0 END) as age_30_60,
+                SUM(CASE WHEN DATEDIFF(CURDATE(), date) > 60
+                    THEN (payable_amount - (COALESCE(instalment_1_amount, 0) + COALESCE(instalment_2_amount, 0) +
+                          COALESCE(instalment_3_amount, 0) + COALESCE(instalment_4_amount, 0) +
+                          COALESCE(instalment_5_amount, 0))) ELSE 0 END) as age_60_plus
+            FROM purchase_slips
+            WHERE 1=1 {date_filter}
+        ''')
+        ageing_data = cursor.fetchone()
+        ageing = {
+            'amounts': [
+                float(ageing_data['age_0_7']) if ageing_data['age_0_7'] else 0,
+                float(ageing_data['age_7_30']) if ageing_data['age_7_30'] else 0,
+                float(ageing_data['age_30_60']) if ageing_data['age_30_60'] else 0,
+                float(ageing_data['age_60_plus']) if ageing_data['age_60_plus'] else 0
+            ]
+        }
+
+        # ===== PAYMENT MODE SPLIT =====
+        cursor.execute(f'''
+            SELECT
+                SUM(CASE WHEN instalment_1_payment_method = 'Cash' THEN instalment_1_amount ELSE 0 END +
+                    CASE WHEN instalment_2_payment_method = 'Cash' THEN instalment_2_amount ELSE 0 END +
+                    CASE WHEN instalment_3_payment_method = 'Cash' THEN instalment_3_amount ELSE 0 END +
+                    CASE WHEN instalment_4_payment_method = 'Cash' THEN instalment_4_amount ELSE 0 END +
+                    CASE WHEN instalment_5_payment_method = 'Cash' THEN instalment_5_amount ELSE 0 END) as cash_total,
+                SUM(CASE WHEN instalment_1_payment_method = 'Online Transfer' THEN instalment_1_amount ELSE 0 END +
+                    CASE WHEN instalment_2_payment_method = 'Online Transfer' THEN instalment_2_amount ELSE 0 END +
+                    CASE WHEN instalment_3_payment_method = 'Online Transfer' THEN instalment_3_amount ELSE 0 END +
+                    CASE WHEN instalment_4_payment_method = 'Online Transfer' THEN instalment_4_amount ELSE 0 END +
+                    CASE WHEN instalment_5_payment_method = 'Online Transfer' THEN instalment_5_amount ELSE 0 END) as online_total,
+                SUM(CASE WHEN instalment_1_payment_method = 'Cheque' THEN instalment_1_amount ELSE 0 END +
+                    CASE WHEN instalment_2_payment_method = 'Cheque' THEN instalment_2_amount ELSE 0 END +
+                    CASE WHEN instalment_3_payment_method = 'Cheque' THEN instalment_3_amount ELSE 0 END +
+                    CASE WHEN instalment_4_payment_method = 'Cheque' THEN instalment_4_amount ELSE 0 END +
+                    CASE WHEN instalment_5_payment_method = 'Cheque' THEN instalment_5_amount ELSE 0 END) as cheque_total
+            FROM purchase_slips
+            WHERE 1=1 {date_filter}
+        ''')
+        payment_mode_data = cursor.fetchone()
+        payment_mode = {
+            'modes': ['Cash', 'Online Transfer', 'Cheque'],
+            'amounts': [
+                float(payment_mode_data['cash_total']) if payment_mode_data['cash_total'] else 0,
+                float(payment_mode_data['online_total']) if payment_mode_data['online_total'] else 0,
+                float(payment_mode_data['cheque_total']) if payment_mode_data['cheque_total'] else 0
+            ]
+        }
+
+        # ===== GODOWN STOCK =====
+        cursor.execute(f'''
+            SELECT
+                COALESCE(paddy_unloading_godown, 'Unknown') as godown,
+                SUM(weight_quintal) as total_stock
+            FROM purchase_slips
+            WHERE paddy_unloading_godown IS NOT NULL {date_filter}
+            GROUP BY paddy_unloading_godown
+            ORDER BY total_stock DESC
+        ''')
+        godown_data = cursor.fetchall()
+        godown_stock = {
+            'godowns': [row['godown'] for row in godown_data] if godown_data else ['No Data'],
+            'quantities': [float(row['total_stock']) if row['total_stock'] else 0 for row in godown_data] if godown_data else [0]
+        }
+
+        # ===== OUTSTANDING BY FARMER =====
+        cursor.execute(f'''
+            SELECT
+                party_name as farmerName,
+                SUM(total_purchase_amount) as totalPurchase,
+                SUM(COALESCE(instalment_1_amount, 0) + COALESCE(instalment_2_amount, 0) +
+                    COALESCE(instalment_3_amount, 0) + COALESCE(instalment_4_amount, 0) +
+                    COALESCE(instalment_5_amount, 0)) as totalPaid,
+                SUM(payable_amount - (COALESCE(instalment_1_amount, 0) + COALESCE(instalment_2_amount, 0) +
+                    COALESCE(instalment_3_amount, 0) + COALESCE(instalment_4_amount, 0) +
+                    COALESCE(instalment_5_amount, 0))) as outstanding,
+                MAX(GREATEST(
+                    COALESCE(instalment_1_date, '1900-01-01'),
+                    COALESCE(instalment_2_date, '1900-01-01'),
+                    COALESCE(instalment_3_date, '1900-01-01'),
+                    COALESCE(instalment_4_date, '1900-01-01'),
+                    COALESCE(instalment_5_date, '1900-01-01')
+                )) as lastPaymentDate,
+                DATEDIFF(CURDATE(), MAX(date)) as daysOverdue
+            FROM purchase_slips
+            WHERE party_name IS NOT NULL {date_filter}
+            GROUP BY party_name
+            HAVING outstanding > 0
+            ORDER BY outstanding DESC
+            LIMIT 20
+        ''')
+        outstanding_farmers = cursor.fetchall()
+
+        for farmer in outstanding_farmers:
+            if farmer['lastPaymentDate'] and str(farmer['lastPaymentDate']) != '1900-01-01':
+                farmer['lastPaymentDate'] = farmer['lastPaymentDate'].strftime('%Y-%m-%d')
+            else:
+                farmer['lastPaymentDate'] = None
+
+        print(f"✅ Dashboard data retrieved successfully for period: {period}")
+
+        return jsonify({
+            'success': True,
+            'metrics': metrics,
+            'dailyPurchase': daily_purchase,
+            'rateTrend': rate_trend,
+            'deductions': deductions,
+            'topSuppliers': top_suppliers,
+            'ageing': ageing,
+            'paymentMode': payment_mode,
+            'godownStock': godown_stock,
+            'outstanding': outstanding_farmers
+        })
+
+    except Exception as e:
+        error_msg = f"Error fetching dashboard data: {str(e)}"
+        print(f"❌ {error_msg}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': error_msg
+        }), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
