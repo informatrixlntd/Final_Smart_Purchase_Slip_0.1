@@ -468,6 +468,16 @@
                                 <input type="text" class="form-control" id="edit_company_address" name="company_address">
                             </div>
                         </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Company GST No</label>
+                                <input type="text" class="form-control" id="edit_company_gst_no" name="company_gst_no">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Company Mobile No</label>
+                                <input type="text" class="form-control" id="edit_company_mobile_no" name="company_mobile_no">
+                            </div>
+                        </div>
 
                         <!-- Basic Details -->
                         <h6 class="text-primary mb-3">Basic Details</h6>
@@ -528,6 +538,10 @@
                                 <input type="number" step="1" class="form-control" id="edit_bags" name="bags">
                             </div>
                             <div class="col-md-3">
+                                <label class="form-label">Avg Bag Weight (KG)</label>
+                                <input type="number" step="0.01" class="form-control" id="edit_avg_bag_weight" name="avg_bag_weight">
+                            </div>
+                            <div class="col-md-3">
                                 <label class="form-label">Net Weight (KG)</label>
                                 <input type="number" step="0.01" class="form-control" id="edit_net_weight_kg" name="net_weight_kg">
                             </div>
@@ -535,16 +549,30 @@
                                 <label class="form-label">Gunny Weight (KG)</label>
                                 <input type="number" step="0.01" class="form-control" id="edit_gunny_weight_kg" name="gunny_weight_kg">
                             </div>
-                            <div class="col-md-3">
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Final Weight (KG)</label>
+                                <input type="number" step="0.01" class="form-control" id="edit_final_weight_kg" name="final_weight_kg">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Weight (Quintal)</label>
+                                <input type="number" step="0.001" class="form-control" id="edit_weight_quintal" name="weight_quintal">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Weight (Khandi)</label>
+                                <input type="number" step="0.001" class="form-control" id="edit_weight_khandi" name="weight_khandi">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
                                 <label class="form-label">Rate Basis</label>
                                 <select class="form-select" id="edit_rate_basis" name="rate_basis">
                                     <option value="Quintal">Quintal</option>
                                     <option value="Khandi">Khandi</option>
                                 </select>
                             </div>
-                        </div>
-                        <div class="row mb-3">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="form-label">Rate Value</label>
                                 <input type="number" step="0.01" class="form-control" id="edit_rate_value" name="rate_value">
                             </div>
@@ -596,6 +624,22 @@
                             <div class="col-md-3">
                                 <label class="form-label">Moisture Ded.</label>
                                 <input type="number" step="0.01" class="form-control" id="edit_moisture_ded" name="moisture_ded">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Moisture %</label>
+                                <input type="number" step="0.01" class="form-control" id="edit_moisture_percent" name="moisture_percent">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Moisture KG</label>
+                                <input type="number" step="0.01" class="form-control" id="edit_moisture_kg" name="moisture_kg">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Moisture Ded. Comment</label>
+                                <input type="text" class="form-control" id="edit_moisture_ded_comment" name="moisture_ded_comment" placeholder="Optional comment about moisture deduction">
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -794,12 +838,6 @@
                             <div class="col-md-12">
                                 <label class="form-label">Quality Difference Comment</label>
                                 <textarea class="form-control" id="edit_quality_diff_comment" name="quality_diff_comment" rows="2"></textarea>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label class="form-label">Moisture Ded. Comment</label>
-                                <input type="text" class="form-control" id="edit_moisture_ded_comment" name="moisture_ded_comment" placeholder="Optional comment about moisture deduction">
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -1053,6 +1091,8 @@
                                 <table class="view-table">
                                     <tr><td>Company Name</td><td>${slip.company_name || '-'}</td></tr>
                                     <tr><td>Company Address</td><td>${slip.company_address || '-'}</td></tr>
+                                    <tr><td>Company GST No</td><td>${slip.company_gst_no || '-'}</td></tr>
+                                    <tr><td>Company Mobile No</td><td>${slip.company_mobile_no || '-'}</td></tr>
                                     <tr><td>Document Type</td><td>${slip.document_type || 'Purchase Slip'}</td></tr>
                                 </table>
                             </div>
@@ -1110,6 +1150,8 @@
                                     <tr><td>Rate Diff</td><td>₹${slip.rate_diff || 0}</td></tr>
                                     <tr><td>Quality Diff</td><td>₹${slip.quality_diff || 0}</td></tr>
                                     <tr><td>Moisture Ded</td><td>₹${slip.moisture_ded || 0}</td></tr>
+                                    <tr><td>Moisture %</td><td>${slip.moisture_percent || 0}%</td></tr>
+                                    <tr><td>Moisture KG</td><td>${slip.moisture_kg || 0} kg</td></tr>
                                     ${slip.moisture_ded_comment ? `<tr><td>Moisture Ded. Comment</td><td>${slip.moisture_ded_comment}</td></tr>` : ''}
                                     <tr><td>TDS</td><td>₹${slip.tds || 0}</td></tr>
                                     <tr><td>Total Deduction</td><td><strong>₹${slip.total_deduction || 0}</strong></td></tr>
@@ -1170,6 +1212,8 @@
             // Company Details
             document.getElementById('edit_company_name').value = slip.company_name || '';
             document.getElementById('edit_company_address').value = slip.company_address || '';
+            document.getElementById('edit_company_gst_no').value = slip.company_gst_no || '';
+            document.getElementById('edit_company_mobile_no').value = slip.company_mobile_no || '';
 
             // Basic Details
             document.getElementById('edit_date').value = formatDateForInput(slip.date);
@@ -1185,8 +1229,12 @@
 
             // Quantity Details
             document.getElementById('edit_bags').value = slip.bags || 0;
+            document.getElementById('edit_avg_bag_weight').value = slip.avg_bag_weight || 0;
             document.getElementById('edit_net_weight_kg').value = slip.net_weight_kg || 0;
             document.getElementById('edit_gunny_weight_kg').value = slip.gunny_weight_kg || 0;
+            document.getElementById('edit_final_weight_kg').value = slip.final_weight_kg || 0;
+            document.getElementById('edit_weight_quintal').value = slip.weight_quintal || 0;
+            document.getElementById('edit_weight_khandi').value = slip.weight_khandi || 0;
             document.getElementById('edit_rate_basis').value = slip.rate_basis || 'Quintal';
             document.getElementById('edit_rate_value').value = slip.rate_value || 0;
 
@@ -1201,8 +1249,10 @@
             document.getElementById('edit_rate_diff').value = slip.rate_diff || 0;
             document.getElementById('edit_quality_diff').value = slip.quality_diff || 0;
             document.getElementById('edit_moisture_ded').value = slip.moisture_ded || 0;
-            document.getElementById('edit_tds').value = slip.tds || 0;
+            document.getElementById('edit_moisture_percent').value = slip.moisture_percent || 0;
+            document.getElementById('edit_moisture_kg').value = slip.moisture_kg || 0;
             document.getElementById('edit_moisture_ded_comment').value = slip.moisture_ded_comment || '';
+            document.getElementById('edit_tds').value = slip.tds || 0;
 
             // All 5 instalments with all 5 fields
             for (let i = 1; i <= 5; i++) {

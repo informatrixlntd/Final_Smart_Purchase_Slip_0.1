@@ -151,7 +151,7 @@ async function performBackup() {
 function createLocalBackupOnly(dbConfig) {
     return new Promise((resolve) => {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const backupDir = path.join(process.env.USERPROFILE || process.env.HOME, 'PurchaseSlipBackups');
+        const backupDir = path.join(process.env.USERPROFILE || process.env.HOME, 'Documents', 'smart_purchase_slip_backup');
 
         if (!fs.existsSync(backupDir)) {
             fs.mkdirSync(backupDir, { recursive: true });
@@ -160,7 +160,7 @@ function createLocalBackupOnly(dbConfig) {
         const backupFileName = `purchase_slips_backup_${timestamp}.sql`;
         const backupFilePath = path.join(backupDir, backupFileName);
 
-        const command = `mysqldump -h ${dbConfig.host} -u ${dbConfig.user} -p${dbConfig.password} ${dbConfig.database} > "${backupFilePath}"`;
+        const command = `mysqldump -h ${dbConfig.host} -P ${dbConfig.port} -u ${dbConfig.user} -p${dbConfig.password} ${dbConfig.database} > "${backupFilePath}"`;
 
         exec(command, (error, stdout, stderr) => {
             if (error) {

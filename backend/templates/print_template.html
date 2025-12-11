@@ -216,7 +216,9 @@
             <img src="file:///{{ logo_path }}" alt="Logo" class="header-logo" onerror="this.style.display='none'">
             <div class="company-info">
                 <strong>{{ slip.company_name or 'Company Name' }}</strong><br>
-                {{ slip.company_address or 'Company Address' }}
+                {{ slip.company_address or 'Company Address' }}<br>
+                {% if slip.company_gst_no %}GST: {{ slip.company_gst_no }}<br>{% endif %}
+                {% if slip.company_mobile_no %}Mobile: {{ slip.company_mobile_no }}<br>{% endif %}
             </div>
             <h1>{{ slip.document_type or 'PURCHASE SLIP' }}</h1>
             <div class="header-row">
@@ -346,6 +348,16 @@
                 <span>Moisture Ded.{% if slip.moisture_ded_comment %} ({{ slip.moisture_ded_comment }}){% endif %}:</span>
                 <span>₹ {{ "%.2f"|format(slip.moisture_ded or 0) }}</span>
             </div>
+            {% if slip.moisture_percent or slip.moisture_kg %}
+            <div class="calc-row">
+                <span>Moisture %:</span>
+                <span>{{ "%.2f"|format(slip.moisture_percent or 0) }}%</span>
+            </div>
+            <div class="calc-row">
+                <span>Moisture KG:</span>
+                <span>{{ "%.2f"|format(slip.moisture_kg or 0) }} kg</span>
+            </div>
+            {% endif %}
             <div class="calc-row">
                 <span>TDS:</span>
                 <span>₹ {{ "%.2f"|format(slip.tds or 0) }}</span>

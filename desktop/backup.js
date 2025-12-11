@@ -4,7 +4,7 @@ const path = require('path');
 const { google } = require('googleapis');
 const { BrowserWindow, shell, ipcMain } = require('electron');
 
-const BACKUP_DIR = path.join(process.env.USERPROFILE || process.env.HOME, 'PurchaseSlipBackups');
+const BACKUP_DIR = path.join(process.env.USERPROFILE || process.env.HOME, 'Documents', 'smart_purchase_slip_backup');
 
 // Ensure backup directory exists
 if (!fs.existsSync(BACKUP_DIR)) {

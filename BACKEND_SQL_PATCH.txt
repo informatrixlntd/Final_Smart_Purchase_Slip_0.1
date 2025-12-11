@@ -1,0 +1,107 @@
+================================================================================
+CRITICAL: Backend slips.py SQL Queries Need Manual Update
+================================================================================
+
+The INSERT and UPDATE queries in backend/routes/slips.py are missing the new fields.
+
+LOCATION: backend/routes/slips.py around line 200-270
+
+================================================================================
+STEP 1: Fix INSERT Query
+================================================================================
+
+FIND line 201 (INSERT INTO purchase_slips line):
+    company_name, company_address, document_type, vehicle_no, date,
+
+REPLACE WITH:
+    company_name, company_address, company_gst_no, company_mobile_no, document_type, vehicle_no, date,
+
+FIND line 211 (moisture_ded line):
+    moisture_ded, moisture_ded_comment, tds, total_deduction, payable_amount,
+
+REPLACE WITH:
+    moisture_ded, moisture_ded_comment, moisture_percent, moisture_kg, tds, total_deduction, payable_amount,
+
+FIND line 220-221 (values mapping):
+    data.get('company_name', ''),
+    data.get('company_address', ''),
+    data.get('document_type', 'Purchase Slip'),
+
+REPLACE WITH:
+    data.get('company_name', ''),
+    data.get('company_address', ''),
+    data.get('company_gst_no', ''),
+    data.get('company_mobile_no', ''),
+    data.get('document_type', 'Purchase Slip'),
+
+FIND the line with moisture_ded mapping (around line 260):
+    safe_float(data.get('moisture_ded', 0), 0),
+    data.get('moisture_ded_comment', ''),
+    safe_float(data.get('tds', 0), 0),
+
+REPLACE WITH:
+    safe_float(data.get('moisture_ded', 0), 0),
+    data.get('moisture_ded_comment', ''),
+    safe_float(data.get('moisture_percent', 0), 0),
+    safe_float(data.get('moisture_kg', 0), 0),
+    safe_float(data.get('tds', 0), 0),
+
+UPDATE the VALUES placeholder count - it should have 4 more %s (75 total instead of 71)
+
+================================================================================
+STEP 2: Fix UPDATE Query (around line 458)
+================================================================================
+
+FIND the UPDATE line:
+    UPDATE purchase_slips SET
+        company_name = %s, company_address = %s, document_type = %s,
+
+REPLACE WITH:
+    UPDATE purchase_slips SET
+        company_name = %s, company_address = %s, company_gst_no = %s, company_mobile_no = %s, document_type = %s,
+
+FIND in UPDATE:
+    quality_diff = %s, quality_diff_comment = %s, moisture_ded = %s, moisture_ded_comment = %s,
+    tds = %s, total_deduction = %s, payable_amount = %s,
+
+REPLACE WITH:
+    quality_diff = %s, quality_diff_comment = %s, moisture_ded = %s, moisture_ded_comment = %s,
+    moisture_percent = %s, moisture_kg = %s,
+    tds = %s, total_deduction = %s, payable_amount = %s,
+
+FIND the UPDATE values mapping (around line 482):
+    merged_data.get('company_name', ''),
+    merged_data.get('company_address', ''),
+    merged_data.get('document_type', 'Purchase Slip'),
+
+REPLACE WITH:
+    merged_data.get('company_name', ''),
+    merged_data.get('company_address', ''),
+    merged_data.get('company_gst_no', ''),
+    merged_data.get('company_mobile_no', ''),
+    merged_data.get('document_type', 'Purchase Slip'),
+
+FIND in UPDATE values mapping:
+    safe_float(merged_data.get('moisture_ded', 0), 0),
+    merged_data.get('moisture_ded_comment', ''),
+    safe_float(merged_data.get('tds', 0), 0),
+
+REPLACE WITH:
+    safe_float(merged_data.get('moisture_ded', 0), 0),
+    merged_data.get('moisture_ded_comment', ''),
+    safe_float(merged_data.get('moisture_percent', 0), 0),
+    safe_float(merged_data.get('moisture_kg', 0), 0),
+    safe_float(merged_data.get('tds', 0), 0),
+
+================================================================================
+VERIFICATION
+================================================================================
+
+After making these changes:
+
+1. Search for "company_gst_no" in slips.py - should find 4 matches
+2. Search for "moisture_percent" in slips.py - should find 4 matches
+3. Count INSERT VALUES placeholders - should be 75 %s
+4. Count UPDATE SET fields - should match the number of values
+
+================================================================================
