@@ -1951,14 +1951,14 @@
 
         function updateMetricsCards(metrics) {
             console.log('Updating metrics cards:', metrics);
-            document.getElementById('totalPaddyQntl').textContent = `${(metrics.totalPaddyQntl || 0).toFixed(2)} Qntl`;
-            document.getElementById('totalPurchaseAmount').textContent = `₹${(metrics.totalPurchaseAmount || 0).toFixed(2)}`;
-            document.getElementById('totalDeductions').textContent = `₹${(metrics.totalDeductions || 0).toFixed(2)}`;
-            document.getElementById('netPayable').textContent = `₹${(metrics.netPayable || 0).toFixed(2)}`;
-            document.getElementById('totalPaid').textContent = `₹${(metrics.totalPaid || 0).toFixed(2)}`;
-            document.getElementById('totalOutstanding').textContent = `₹${(metrics.totalOutstanding || 0).toFixed(2)}`;
-            document.getElementById('avgEffectiveRate').textContent = `₹${(metrics.avgEffectiveRate || 0).toFixed(2)}/Qntl`;
-            document.getElementById('totalBills').textContent = metrics.totalBills || 0;
+            document.getElementById('totalPaddyQntl').textContent = `${parseFloat(metrics.totalPaddyQntl || 0).toFixed(2)} Qntl`;
+            document.getElementById('totalPurchaseAmount').textContent = `₹${parseFloat(metrics.totalPurchaseAmount || 0).toFixed(2)}`;
+            document.getElementById('totalDeductions').textContent = `₹${parseFloat(metrics.totalDeductions || 0).toFixed(2)}`;
+            document.getElementById('netPayable').textContent = `₹${parseFloat(metrics.netPayable || 0).toFixed(2)}`;
+            document.getElementById('totalPaid').textContent = `₹${parseFloat(metrics.totalPaid || 0).toFixed(2)}`;
+            document.getElementById('totalOutstanding').textContent = `₹${parseFloat(metrics.totalOutstanding || 0).toFixed(2)}`;
+            document.getElementById('avgEffectiveRate').textContent = `₹${parseFloat(metrics.avgEffectiveRate || 0).toFixed(2)}/Qntl`;
+            document.getElementById('totalBills').textContent = parseInt(metrics.totalBills || 0);
         }
 
         function updateCharts(data) {
