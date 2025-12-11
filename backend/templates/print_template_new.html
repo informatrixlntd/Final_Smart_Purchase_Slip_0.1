@@ -273,7 +273,9 @@
 
     <div>
         <span><strong>कंपनी / मिल नाव:</strong> {{ slip.company_name }}</span><br>
-        <span><strong>पत्ता:</strong> {{ slip.company_address }}</span>
+        <span><strong>पत्ता:</strong> {{ slip.company_address }}</span><br>
+        {% if slip.company_gst_no %}<span><strong>GST क्रमांक:</strong> {{ slip.company_gst_no }}</span><br>{% endif %}
+        {% if slip.company_mobile_no %}<span><strong>मोबाईल नंबर:</strong> {{ slip.company_mobile_no }}</span>{% endif %}
     </div>
 
     <br>
