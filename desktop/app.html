@@ -1928,41 +1928,52 @@
         async function loadDashboardData() {
             try {
                 const period = document.getElementById('dashboardPeriod').value;
+                console.log('Loading dashboard data for period:', period);
                 const response = await fetch(`http://localhost:5000/api/dashboard?period=${period}`);
                 const data = await response.json();
+                console.log('Dashboard data received:', data);
 
                 if (data.success) {
+                    console.log('Updating dashboard UI...');
                     updateMetricsCards(data.metrics);
                     updateCharts(data);
                     updateOutstandingTable(data.outstanding);
+                    console.log('Dashboard updated successfully');
+                } else {
+                    console.error('Dashboard API returned error:', data.message);
+                    alert('Failed to load dashboard data: ' + (data.message || 'Unknown error'));
                 }
             } catch (error) {
                 console.error('Error loading dashboard:', error);
+                alert('Failed to load dashboard data. Please check the console for details.');
             }
         }
 
         function updateMetricsCards(metrics) {
-            document.getElementById('totalPaddyQntl').textContent = `${metrics.totalPaddyQntl.toFixed(2)} Qntl`;
-            document.getElementById('totalPurchaseAmount').textContent = `₹${metrics.totalPurchaseAmount.toFixed(2)}`;
-            document.getElementById('totalDeductions').textContent = `₹${metrics.totalDeductions.toFixed(2)}`;
-            document.getElementById('netPayable').textContent = `₹${metrics.netPayable.toFixed(2)}`;
-            document.getElementById('totalPaid').textContent = `₹${metrics.totalPaid.toFixed(2)}`;
-            document.getElementById('totalOutstanding').textContent = `₹${metrics.totalOutstanding.toFixed(2)}`;
-            document.getElementById('avgEffectiveRate').textContent = `₹${metrics.avgEffectiveRate.toFixed(2)}/Qntl`;
-            document.getElementById('totalBills').textContent = metrics.totalBills;
+            console.log('Updating metrics cards:', metrics);
+            document.getElementById('totalPaddyQntl').textContent = `${(metrics.totalPaddyQntl || 0).toFixed(2)} Qntl`;
+            document.getElementById('totalPurchaseAmount').textContent = `₹${(metrics.totalPurchaseAmount || 0).toFixed(2)}`;
+            document.getElementById('totalDeductions').textContent = `₹${(metrics.totalDeductions || 0).toFixed(2)}`;
+            document.getElementById('netPayable').textContent = `₹${(metrics.netPayable || 0).toFixed(2)}`;
+            document.getElementById('totalPaid').textContent = `₹${(metrics.totalPaid || 0).toFixed(2)}`;
+            document.getElementById('totalOutstanding').textContent = `₹${(metrics.totalOutstanding || 0).toFixed(2)}`;
+            document.getElementById('avgEffectiveRate').textContent = `₹${(metrics.avgEffectiveRate || 0).toFixed(2)}/Qntl`;
+            document.getElementById('totalBills').textContent = metrics.totalBills || 0;
         }
 
         function updateCharts(data) {
+            console.log('Updating charts with data:', data);
+
             // Daily Purchase Trend Chart
             destroyChart('dailyPurchaseChart');
             const dailyCtx = document.getElementById('dailyPurchaseChart').getContext('2d');
             dashboardCharts['dailyPurchaseChart'] = new Chart(dailyCtx, {
                 type: 'line',
                 data: {
-                    labels: data.dailyPurchase.dates,
+                    labels: (data.dailyPurchase?.dates || []).length > 0 ? data.dailyPurchase.dates : ['No Data'],
                     datasets: [{
                         label: 'Quantity (Qntl)',
-                        data: data.dailyPurchase.quantities,
+                        data: (data.dailyPurchase?.quantities || []).length > 0 ? data.dailyPurchase.quantities : [0],
                         borderColor: '#667eea',
                         backgroundColor: 'rgba(102, 126, 234, 0.1)',
                         tension: 0.4,
@@ -1984,10 +1995,10 @@
             dashboardCharts['rateTrendChart'] = new Chart(rateCtx, {
                 type: 'line',
                 data: {
-                    labels: data.rateTrend.dates,
+                    labels: (data.rateTrend?.dates || []).length > 0 ? data.rateTrend.dates : ['No Data'],
                     datasets: [{
                         label: 'Rate (₹/Qntl)',
-                        data: data.rateTrend.rates,
+                        data: (data.rateTrend?.rates || []).length > 0 ? data.rateTrend.rates : [0],
                         borderColor: '#f6ad55',
                         backgroundColor: 'rgba(246, 173, 85, 0.1)',
                         tension: 0.4,
@@ -2009,10 +2020,10 @@
             dashboardCharts['deductionChart'] = new Chart(deductionCtx, {
                 type: 'bar',
                 data: {
-                    labels: data.deductions.labels,
+                    labels: data.deductions?.labels || ['Moisture', 'Quality', 'Dalali', 'Hammali', 'Commission', 'Freight'],
                     datasets: [{
                         label: 'Amount (₹)',
-                        data: data.deductions.amounts,
+                        data: data.deductions?.amounts || [0, 0, 0, 0, 0, 0],
                         backgroundColor: [
                             '#fc8181',
                             '#f6ad55',
@@ -2038,10 +2049,10 @@
             dashboardCharts['topSuppliersChart'] = new Chart(suppliersCtx, {
                 type: 'bar',
                 data: {
-                    labels: data.topSuppliers.names,
+                    labels: (data.topSuppliers?.names || []).length > 0 ? data.topSuppliers.names : ['No Data'],
                     datasets: [{
                         label: 'Quantity (Qntl)',
-                        data: data.topSuppliers.quantities,
+                        data: (data.topSuppliers?.quantities || []).length > 0 ? data.topSuppliers.quantities : [0],
                         backgroundColor: '#667eea'
                     }]
                 },
@@ -2063,7 +2074,7 @@
                 data: {
                     labels: ['0-7 days', '7-30 days', '30-60 days', '60+ days'],
                     datasets: [{
-                        data: data.ageing.amounts,
+                        data: data.ageing?.amounts || [0, 0, 0, 0],
                         backgroundColor: ['#48bb78', '#ed8936', '#f6e05e', '#fc8181']
                     }]
                 },
@@ -2079,9 +2090,9 @@
             dashboardCharts['paymentModeChart'] = new Chart(paymentCtx, {
                 type: 'pie',
                 data: {
-                    labels: data.paymentMode.modes,
+                    labels: data.paymentMode?.modes || ['Cash', 'Online Transfer', 'Cheque'],
                     datasets: [{
-                        data: data.paymentMode.amounts,
+                        data: data.paymentMode?.amounts || [0, 0, 0],
                         backgroundColor: ['#667eea', '#48bb78', '#ed8936']
                     }]
                 },
@@ -2097,10 +2108,10 @@
             dashboardCharts['godownStockChart'] = new Chart(godownCtx, {
                 type: 'bar',
                 data: {
-                    labels: data.godownStock.godowns,
+                    labels: data.godownStock?.godowns || ['No Data'],
                     datasets: [{
                         label: 'Stock (Qntl)',
-                        data: data.godownStock.quantities,
+                        data: data.godownStock?.quantities || [0],
                         backgroundColor: '#764ba2'
                     }]
                 },
@@ -2116,16 +2127,17 @@
             // Rice Output Chart
             destroyChart('riceOutputChart');
             const riceCtx = document.getElementById('riceOutputChart').getContext('2d');
+            const totalPaddy = data.metrics?.totalPaddyQntl || 0;
             dashboardCharts['riceOutputChart'] = new Chart(riceCtx, {
                 type: 'doughnut',
                 data: {
                     labels: ['Rice (67%)', 'Husk (22%)', 'Bran (10%)', 'Loss (1%)'],
                     datasets: [{
                         data: [
-                            data.metrics.totalPaddyQntl * 0.67,
-                            data.metrics.totalPaddyQntl * 0.22,
-                            data.metrics.totalPaddyQntl * 0.10,
-                            data.metrics.totalPaddyQntl * 0.01
+                            totalPaddy * 0.67,
+                            totalPaddy * 0.22,
+                            totalPaddy * 0.10,
+                            totalPaddy * 0.01
                         ],
                         backgroundColor: ['#48bb78', '#ed8936', '#f6e05e', '#cbd5e0']
                     }]

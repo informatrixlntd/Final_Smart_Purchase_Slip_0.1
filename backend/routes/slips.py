@@ -1094,8 +1094,18 @@ def get_dashboard_data():
         outstanding_farmers = cursor.fetchall()
 
         for farmer in outstanding_farmers:
-            if farmer['lastPaymentDate'] and str(farmer['lastPaymentDate']) != '1900-01-01':
-                farmer['lastPaymentDate'] = farmer['lastPaymentDate'].strftime('%Y-%m-%d')
+            if farmer['lastPaymentDate']:
+                last_date = farmer['lastPaymentDate']
+                if isinstance(last_date, str):
+                    if last_date != '1900-01-01':
+                        farmer['lastPaymentDate'] = last_date
+                    else:
+                        farmer['lastPaymentDate'] = None
+                else:
+                    if str(last_date) != '1900-01-01':
+                        farmer['lastPaymentDate'] = last_date.strftime('%Y-%m-%d')
+                    else:
+                        farmer['lastPaymentDate'] = None
             else:
                 farmer['lastPaymentDate'] = None
 
