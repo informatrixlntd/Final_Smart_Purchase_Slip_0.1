@@ -2,15 +2,43 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const { spawn, exec } = require('child_process');
 const fs = require('fs');
-const dotenv = require('dotenv');
 
 let mainWindow;
 let pythonProcess;
 let isBackupInProgress = false;
 let canCloseApp = false;
 
-// Load environment variables
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
+// Load configuration from config.json
+function loadConfig() {
+    try {
+        let configPath;
+        if (app.isPackaged) {
+            configPath = path.join(process.resourcesPath, 'config.json');
+        } else {
+            configPath = path.join(__dirname, '..', 'config.json');
+        }
+
+        if (fs.existsSync(configPath)) {
+            const configData = fs.readFileSync(configPath, 'utf8');
+            return JSON.parse(configData);
+        }
+    } catch (error) {
+        console.error('Error loading config:', error);
+    }
+
+    // Default config if file not found
+    return {
+        database: {
+            host: 'localhost',
+            port: 3306,
+            user: 'root',
+            password: 'root',
+            database: 'purchase_slips_db'
+        }
+    };
+}
+
+const config = loadConfig();
 
 function createWindow() {
     // Create splash screen first
@@ -93,13 +121,13 @@ async function performBackup() {
             buttons: []
         });
 
-        const dbConfig = {
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 1396,   // <-- Added port here
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'root',
-    database: process.env.DB_NAME || 'purchase_slips_db'
-};
+        const dbConfig = config.database || {
+            host: 'localhost',
+            port: 3306,
+            user: 'root',
+            password: 'root',
+            database: 'purchase_slips_db'
+        };
 
 
         // Try to use backup module if available

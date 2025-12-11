@@ -64,7 +64,6 @@
   },
   "dependencies": {
     "googleapis": "^167.0.0",
-    "module-name": "^0.0.1-security",
-    "dotenv": "^16.0.0"
+    "module-name": "^0.0.1-security"
   }
 }
