@@ -893,6 +893,13 @@ def get_dashboard_data():
         ''')
         metrics = cursor.fetchone()
 
+        # Convert metrics to float
+        metrics['totalPaddyQntl'] = float(metrics['totalPaddyQntl']) if metrics['totalPaddyQntl'] else 0.0
+        metrics['totalPurchaseAmount'] = float(metrics['totalPurchaseAmount']) if metrics['totalPurchaseAmount'] else 0.0
+        metrics['totalDeductions'] = float(metrics['totalDeductions']) if metrics['totalDeductions'] else 0.0
+        metrics['netPayable'] = float(metrics['netPayable']) if metrics['netPayable'] else 0.0
+        metrics['totalBills'] = int(metrics['totalBills']) if metrics['totalBills'] else 0
+
         # Calculate total paid from instalments
         cursor.execute(f'''
             SELECT COALESCE(SUM(
@@ -906,14 +913,14 @@ def get_dashboard_data():
             WHERE 1=1 {date_filter}
         ''')
         paid_result = cursor.fetchone()
-        metrics['totalPaid'] = paid_result['totalPaid']
-        metrics['totalOutstanding'] = metrics['netPayable'] - metrics['totalPaid']
+        metrics['totalPaid'] = float(paid_result['totalPaid']) if paid_result['totalPaid'] else 0.0
+        metrics['totalOutstanding'] = float(metrics['netPayable'] - metrics['totalPaid'])
 
         # Average effective rate
         if metrics['totalPaddyQntl'] > 0:
-            metrics['avgEffectiveRate'] = metrics['netPayable'] / metrics['totalPaddyQntl']
+            metrics['avgEffectiveRate'] = float(metrics['netPayable'] / metrics['totalPaddyQntl'])
         else:
-            metrics['avgEffectiveRate'] = 0
+            metrics['avgEffectiveRate'] = 0.0
 
         # ===== DAILY PURCHASE TREND =====
         cursor.execute(f'''
@@ -1094,6 +1101,11 @@ def get_dashboard_data():
         outstanding_farmers = cursor.fetchall()
 
         for farmer in outstanding_farmers:
+            # Convert numeric values to float
+            farmer['totalPurchase'] = float(farmer['totalPurchase']) if farmer['totalPurchase'] else 0.0
+            farmer['totalPaid'] = float(farmer['totalPaid']) if farmer['totalPaid'] else 0.0
+            farmer['outstanding'] = float(farmer['outstanding']) if farmer['outstanding'] else 0.0
+
             if farmer['lastPaymentDate']:
                 last_date = farmer['lastPaymentDate']
                 if isinstance(last_date, str):

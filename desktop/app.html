@@ -339,10 +339,19 @@
         }
 
         /* FORM CONTROLS */
+        .form-control,
+        .form-select,
+        input,
+        textarea {
+            caret-color: #2d3748 !important;
+            color: #2d3748 !important;
+        }
+
         .form-control:focus,
         .form-select:focus {
             border-color: #667eea;
             box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            caret-color: #2d3748 !important;
         }
 
         /* TABLE HEADERS */
@@ -2169,9 +2178,9 @@
                 return `
                     <tr>
                         <td>${item.farmerName}</td>
-                        <td class="text-end">₹${item.totalPurchase.toFixed(2)}</td>
-                        <td class="text-end">₹${item.totalPaid.toFixed(2)}</td>
-                        <td class="text-end"><strong>₹${item.outstanding.toFixed(2)}</strong></td>
+                        <td class="text-end">₹${parseFloat(item.totalPurchase || 0).toFixed(2)}</td>
+                        <td class="text-end">₹${parseFloat(item.totalPaid || 0).toFixed(2)}</td>
+                        <td class="text-end"><strong>₹${parseFloat(item.outstanding || 0).toFixed(2)}</strong></td>
                         <td>${item.lastPaymentDate || 'N/A'}</td>
                         <td class="text-center"><span class="stat-badge ${statusClass}">${statusText}</span></td>
                     </tr>

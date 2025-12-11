@@ -59,6 +59,14 @@ body {
     margin-bottom: 0.5rem;
 }
 
+.form-control,
+.form-select,
+input,
+textarea {
+    caret-color: #2d3748 !important;
+    color: #2d3748 !important;
+}
+
 .form-control {
     border-radius: 6px;
     border: 1px solid #ced4da;
@@ -69,11 +77,13 @@ body {
 .form-control:focus {
     border-color: #667eea;
     box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    caret-color: #2d3748 !important;
 }
 
 .form-select:focus {
     border-color: #667eea;
     box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    caret-color: #2d3748 !important;
 }
 
 .form-control[readonly] {
