@@ -1,0 +1,50 @@
+{
+  "name": "smart-purchase-slip",
+  "version": "2.0.0",
+  "description": "Smart Purchase Slip - Rice Mill Management System",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build-win": "electron-builder --win"
+  },
+  "keywords": [
+    "smart-purchase-slip",
+    "rice-mill",
+    "purchase-slip",
+    "desktop"
+  ],
+  "author": "Smart Purchase Slip",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.smartpurchaseslip.app",
+    "productName": "Smart Purchase Slip",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/spslogo1.png"
+    },
+    "mac": {
+      "icon": "assets/spslogo1.png"
+    },
+    "linux": {
+      "icon": "assets/spslogo1.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "dependencies": {
+    "googleapis": "^167.0.0",
+    "module-name": "^0.0.1-security"
+  }
+}

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Slip - {{ slip.bill_no }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4;
+            margin: 8mm;
+        }
+
+        @media print {
+            html, body {
+                height: 100%;
+                overflow: hidden;
+            }
+            body {
+                margin: 0;
+                padding: 10px;
+            }
+            .no-print {
+                display: none;
+            }
+            .slip-container {
+                page-break-after: avoid;
+                page-break-inside: avoid;
+            }
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 9pt;
+            line-height: 1.2;
+            color: #000;
+            background: #fff;
+            padding: 15px;
+            margin: 0;
+        }
+
+        .slip-container {
+            border: 2px solid #000;
+            padding: 12px;
+            max-width: 21cm;
+            margin: 0 auto;
+            page-break-after: avoid;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .header-logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 10px;
+            display: block;
+        }
+
+        .header h1 {
+            font-size: 18pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .company-info {
+            text-align: center;
+            font-size: 9pt;
+            margin-bottom: 5px;
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 10pt;
+            font-weight: bold;
+        }
+
+        .content-section {
+            margin-bottom: 8px;
+            border: 1px solid #333;
+            padding: 6px;
+            page-break-inside: avoid;
+        }
+
+        .section-title {
+            font-weight: bold;
+            font-size: 10pt;
+            background-color: #e0e0e0;
+            padding: 4px 8px;
+            margin: -8px -8px 8px -8px;
+        }
+
+        .field-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .field {
+            display: flex;
+            font-size: 9pt;
+            margin-bottom: 4px;
+        }
+
+        .field-label {
+            font-weight: bold;
+            min-width: 120px;
+            margin-right: 8px;
+        }
+
+        .field-value {
+            flex: 1;
+            border-bottom: 1px dotted #666;
+        }
+
+        .calculation-section {
+            border: 2px solid #000;
+            padding: 8px;
+            margin-bottom: 8px;
+            background-color: #f9f9f9;
+            page-break-inside: avoid;
+        }
+
+        .calc-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-size: 9pt;
+        }
+
+        .calc-row.subtotal {
+            font-weight: bold;
+            border-bottom: 1px solid #666;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+        }
+
+        .calc-row.total {
+            font-weight: bold;
+            font-size: 11pt;
+            border-top: 2px solid #000;
+            padding-top: 6px;
+            margin-top: 6px;
+            background-color: #d4edda;
+            padding: 8px;
+            margin-left: -10px;
+            margin-right: -10px;
+        }
+
+        .payment-section {
+            border: 1px solid #333;
+            padding: 6px;
+            margin-bottom: 8px;
+            page-break-inside: avoid;
+        }
+
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            padding-top: 8px;
+            border-top: 1px solid #333;
+            page-break-inside: avoid;
+        }
+
+        .signature-box {
+            text-align: center;
+            flex: 1;
+        }
+
+        .signature-line {
+            border-top: 1px solid #000;
+            margin-top: 30px;
+            padding-top: 5px;
+            font-size: 8pt;
+            font-weight: bold;
+        }
+
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .print-button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">Print</button>
+
+    <div class="slip-container">
+        <div class="header">
+            <img src="file:///{{ logo_path }}" alt="Logo" class="header-logo" onerror="this.style.display='none'">
+            <div class="company-info">
+                <strong>{{ slip.company_name or 'Company Name' }}</strong><br>
+                {{ slip.company_address or 'Company Address' }}
+            </div>
+            <h1>{{ slip.document_type or 'PURCHASE SLIP' }}</h1>
+            <div class="header-row">
+                <div><strong>Date:</strong> {{ slip.date }}</div>
+                <div><strong>Bill No:</strong> {{ slip.bill_no }}</div>
+            </div>
+            {% if slip.payment_due_date %}
+            <div style="margin-top: 10px; padding: 8px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+                <div style="font-size: 9pt;"><strong>Payment Due Date:</strong> {{ slip.payment_due_date }}</div>
+                {% if slip.payment_due_comment %}
+                <div style="font-size: 8pt; margin-top: 4px; font-style: italic;">{{ slip.payment_due_comment }}</div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="content-section">
+            <div class="section-title">Vehicle & Party Details</div>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 8px;">
+                <tr>
+                    <td style="border: 1px solid #333; padding: 6px; font-weight: bold; width: 25%; font-size: 9pt;">Vehicle No:</td>
+                    <td style="border: 1px solid #333; padding: 6px; width: 25%; font-size: 9pt;">{{ slip.vehicle_no or '' }}</td>
+                    <td style="border: 1px solid #333; padding: 6px; font-weight: bold; width: 25%; font-size: 9pt;">Party Name:</td>
+                    <td style="border: 1px solid #333; padding: 6px; width: 25%; font-size: 9pt;">{{ slip.party_name or '' }}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #333; padding: 6px; font-weight: bold; font-size: 9pt;">Mobile Number:</td>
+                    <td style="border: 1px solid #333; padding: 6px; font-size: 9pt;">{{ slip.mobile_number or '' }}</td>
+                    <td style="border: 1px solid #333; padding: 6px; font-weight: bold; font-size: 9pt;">Material Name:</td>
+                    <td style="border: 1px solid #333; padding: 6px; font-size: 9pt;">{{ slip.material_name or '' }}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #333; padding: 6px; font-weight: bold; font-size: 9pt;">Ticket No:</td>
+                    <td style="border: 1px solid #333; padding: 6px; font-size: 9pt;">{{ slip.ticket_no or '' }}</td>
+                    <td style="border: 1px solid #333; padding: 6px; font-weight: bold; font-size: 9pt;">Broker:</td>
+                    <td style="border: 1px solid #333; padding: 6px; font-size: 9pt;">{{ slip.broker or '' }}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #333; padding: 6px; font-weight: bold; font-size: 9pt;">Terms of Delivery:</td>
+                    <td style="border: 1px solid #333; padding: 6px; font-size: 9pt;">{{ slip.terms_of_delivery or '' }}</td>
+                    <td style="border: 1px solid #333; padding: 6px; font-weight: bold; font-size: 9pt;">Sup. Inv. No:</td>
+                    <td style="border: 1px solid #333; padding: 6px; font-size: 9pt;">{{ slip.sup_inv_no or '' }}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #333; padding: 6px; font-weight: bold; font-size: 9pt;">GST No:</td>
+                    <td colspan="3" style="border: 1px solid #333; padding: 6px; font-size: 9pt;">{{ slip.gst_no or '' }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="content-section">
+            <div class="section-title">Quantity Details</div>
+            <div class="field-grid">
+                <div class="field">
+                    <span class="field-label">Bags:</span>
+                    <span class="field-value">{{ "%.0f"|format(slip.bags or 0) }}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Avg Bag Weight:</span>
+                    <span class="field-value">{{ "%.2f"|format(slip.avg_bag_weight or 0) }} kg</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Net Weight (KG):</span>
+                    <span class="field-value">{{ "%.2f"|format(slip.net_weight_kg or 0) }} kg</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Gunny Weight (KG):</span>
+                    <span class="field-value">{{ "%.2f"|format(slip.gunny_weight_kg or 0) }} kg</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Final Weight (KG):</span>
+                    <span class="field-value">{{ "%.2f"|format(slip.final_weight_kg or 0) }} kg</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Weight (Quintal):</span>
+                    <span class="field-value">{{ "%.3f"|format(slip.weight_quintal or 0) }}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Weight (Khandi):</span>
+                    <span class="field-value">{{ "%.3f"|format(slip.weight_khandi or 0) }}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Rate Basis:</span>
+                    <span class="field-value">{{ slip.rate_basis or 'Quintal' }}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Rate Value:</span>
+                    <span class="field-value">₹ {{ "%.2f"|format(slip.rate_value or 0) }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="calculation-section">
+            <div class="calc-row subtotal">
+                <span><strong>Total Purchase Amount:</strong></span>
+                <span>₹ {{ "%.2f"|format(slip.total_purchase_amount or 0) }}</span>
+            </div>
+            <div class="calc-row">
+                <span>Bank Commission & Postage:</span>
+                <span>₹ {{ "%.2f"|format(slip.bank_commission or 0) }}</span>
+            </div>
+            <div class="calc-row">
+                <span>Batav ({{ "%.2f"|format(slip.batav_percent or 0) }}%):</span>
+                <span>₹ {{ "%.2f"|format(slip.batav or 0) }}</span>
+            </div>
+            <div class="calc-row">
+                <span>Dalali (₹{{ "%.2f"|format(slip.dalali_rate or 0) }}/100 KG):</span>
+                <span>₹ {{ "%.2f"|format(slip.dalali or 0) }}</span>
+            </div>
+            <div class="calc-row">
+                <span>Hamali (₹{{ "%.2f"|format(slip.hammali_rate or 0) }}/100 KG):</span>
+                <span>₹ {{ "%.2f"|format(slip.hammali or 0) }}</span>
+            </div>
+            <div class="calc-row">
+                <span>Freight:</span>
+                <span>₹ {{ "%.2f"|format(slip.freight or 0) }}</span>
+            </div>
+            <div class="calc-row">
+                <span>Rate Diff.:</span>
+                <span>₹ {{ "%.2f"|format(slip.rate_diff or 0) }}</span>
+            </div>
+            <div class="calc-row">
+                <span>Quality Diff.{% if slip.quality_diff_comment %} ({{ slip.quality_diff_comment }}){% endif %}:</span>
+                <span>₹ {{ "%.2f"|format(slip.quality_diff or 0) }}</span>
+            </div>
+            <div class="calc-row">
+                <span>Moisture Ded.{% if slip.moisture_ded_comment %} ({{ slip.moisture_ded_comment }}){% endif %}:</span>
+                <span>₹ {{ "%.2f"|format(slip.moisture_ded or 0) }}</span>
+            </div>
+            <div class="calc-row">
+                <span>TDS:</span>
+                <span>₹ {{ "%.2f"|format(slip.tds or 0) }}</span>
+            </div>
+            <div class="calc-row subtotal">
+                <span><strong>Total Deduction:</strong></span>
+                <span><strong>₹ {{ "%.2f"|format(slip.total_deduction or 0) }}</strong></span>
+            </div>
+            <div class="calc-row total">
+                <span>PAYABLE AMOUNT:</span>
+                <span>₹ {{ "%.2f"|format(slip.payable_amount or 0) }}</span>
+            </div>
+        </div>
+
+        <div class="payment-section">
+            <div class="section-title">Payment Information</div>
+            <div class="field-grid">
+                <div class="field">
+                    <span class="field-label">Payment Method:</span>
+                    <span class="field-value">{{ slip.payment_method or '' }}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Payment Date:</span>
+                    <span class="field-value">{{ slip.payment_date or '' }}</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Payment Amount:</span>
+                    <span class="field-value">₹ {{ "%.2f"|format(slip.payment_amount or 0) }}</span>
+                </div>
+            </div>
+            {% if slip.payment_bank_account %}
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">
+                <div style="font-size: 9pt; font-weight: bold;">Bank Account Details:</div>
+                <div style="font-size: 9pt; margin-top: 4px; line-height: 1.4;">{{ slip.payment_bank_account }}</div>
+            </div>
+            {% endif %}
+        </div>
+
+        {% if slip.instalment_1_date or slip.instalment_1_amount or slip.instalment_2_date or slip.instalment_2_amount or slip.instalment_3_date or slip.instalment_3_amount or slip.instalment_4_date or slip.instalment_4_amount or slip.instalment_5_date or slip.instalment_5_amount %}
+        <div class="content-section">
+            <div class="section-title">Payment Instalments</div>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 8pt;">
+                <thead>
+                    <tr style="background-color: #e0e0e0;">
+                        <th style="border: 1px solid #333; padding: 4px; text-align: left;">Instalment</th>
+                        <th style="border: 1px solid #333; padding: 4px; text-align: left;">Date</th>
+                        <th style="border: 1px solid #333; padding: 4px; text-align: right;">Amount</th>
+                        <th style="border: 1px solid #333; padding: 4px; text-align: left;">Method</th>
+                        <th style="border: 1px solid #333; padding: 4px; text-align: left;">Bank Account</th>
+                        <th style="border: 1px solid #333; padding: 4px; text-align: left;">Comment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if slip.instalment_1_date or slip.instalment_1_amount %}
+                    <tr>
+                        <td style="border: 1px solid #333; padding: 4px; font-weight: bold;">1</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_1_date_formatted or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px; text-align: right;">₹{{ "%.2f"|format(slip.instalment_1_amount or 0) }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_1_payment_method or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_1_payment_bank_account or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_1_comment or '-' }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if slip.instalment_2_date or slip.instalment_2_amount %}
+                    <tr>
+                        <td style="border: 1px solid #333; padding: 4px; font-weight: bold;">2</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_2_date_formatted or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px; text-align: right;">₹{{ "%.2f"|format(slip.instalment_2_amount or 0) }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_2_payment_method or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_2_payment_bank_account or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_2_comment or '-' }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if slip.instalment_3_date or slip.instalment_3_amount %}
+                    <tr>
+                        <td style="border: 1px solid #333; padding: 4px; font-weight: bold;">3</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_3_date_formatted or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px; text-align: right;">₹{{ "%.2f"|format(slip.instalment_3_amount or 0) }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_3_payment_method or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_3_payment_bank_account or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_3_comment or '-' }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if slip.instalment_4_date or slip.instalment_4_amount %}
+                    <tr>
+                        <td style="border: 1px solid #333; padding: 4px; font-weight: bold;">4</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_4_date_formatted or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px; text-align: right;">₹{{ "%.2f"|format(slip.instalment_4_amount or 0) }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_4_payment_method or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_4_payment_bank_account or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_4_comment or '-' }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if slip.instalment_5_date or slip.instalment_5_amount %}
+                    <tr>
+                        <td style="border: 1px solid #333; padding: 4px; font-weight: bold;">5</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_5_date_formatted or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px; text-align: right;">₹{{ "%.2f"|format(slip.instalment_5_amount or 0) }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_5_payment_method or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_5_payment_bank_account or '-' }}</td>
+                        <td style="border: 1px solid #333; padding: 4px;">{{ slip.instalment_5_comment or '-' }}</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        {% if slip.quality_diff_comment %}
+        <div class="content-section">
+            <div class="section-title">Quality Difference Comment</div>
+            <div style="font-size: 9pt; line-height: 1.4; word-wrap: break-word;">
+                {{ slip.quality_diff_comment }}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if slip.paddy_unloading_godown %}
+        <div class="content-section">
+            <div class="section-title">Paddy Unloading Godown</div>
+            <div style="font-size: 9pt; line-height: 1.4; word-wrap: break-word;">
+                {{ slip.paddy_unloading_godown }}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="footer">
+            <div class="signature-box">
+                <div class="signature-line">
+                    Prepared By: {{ slip.prepared_by or '' }}
+                </div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-line">
+                    Authorised Sign: {{ slip.authorised_sign or '' }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        };
+    </script>
+</body>
+</html>

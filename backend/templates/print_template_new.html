@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>खरेदी पावती - {{ slip.bill_no }}</title>
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-size: 10pt; /* GLOBAL FONT SIZE */
+    }
+
+    /* STRICT A4 PAGE FITTING - ALWAYS ONE PAGE */
+    @page {
+        size: A4 portrait;
+        margin: 10mm;
+    }
+
+    @media print {
+        @page {
+            size: A4;
+            margin: 10mm;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            max-width: 190mm;
+            overflow: hidden;
+            font-size: 10pt;
+        }
+        .no-print {
+            display: none !important;
+        }
+        .slip-container {
+            page-break-inside: avoid;
+            page-break-after: avoid;
+        }
+    }
+
+    html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        font-size: 10pt;
+    }
+
+    body {
+        font-family: Arial, sans-serif;
+        line-height: 1.1;
+        color: #000;
+        background: #fff;
+        max-width: 190mm;
+        margin: 0 auto;
+        font-size: 10pt;
+    }
+
+    .slip-container {
+        border: 1.5px solid #000;
+        padding: 6px;
+        max-width: 100%;
+        max-height: 277mm;
+        overflow: hidden;
+        font-size: 10pt;
+    }
+
+    .header {
+        text-align: center;
+        border-bottom: 1.5px solid #000;
+        padding-bottom: 4px;
+        margin-bottom: 4px;
+        font-size: 10pt;
+    }
+
+    .header-logo {
+        width: 50px;
+        height: 50px;
+        margin: 0 auto 4px;
+        display: block;
+    }
+
+    .header h1 {
+        font-size: 10pt; /* kept bigger for title */
+        margin-bottom: 2px;
+        line-height: 1;
+    }
+
+    .header p {
+        font-size: 10pt;
+        margin: 1px 0;
+        line-height: 1;
+    }
+
+    .slip-title {
+        text-align: center;
+        font-size: 10pt; 
+        font-weight: bold;
+        margin: 3px 0;
+        text-decoration: underline;
+        line-height: 1;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 2px 0;
+        font-size: 10pt;
+        line-height: 1.5;
+    }
+
+    .info-row span {
+        flex: 1;
+        font-size: 10pt;
+    }
+
+    .section {
+        margin: 4px 0;
+        font-size: 10pt;
+    }
+
+    .section-title {
+        background: #000;
+        color: #fff;
+        padding: 2px 6px;
+        font-weight: bold;
+        font-size: 9pt;
+        margin: 4px 0 3px 0;
+        line-height: 1.2;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 3px 0;
+        font-size: 10pt;
+    }
+
+    table, th, td {
+        border: 0.5px solid #000;
+    }
+
+    th, td {
+        padding: 2px 4px;
+        text-align: left;
+        line-height: 1.1;
+        font-size: 10pt;
+    }
+
+    th {
+        background: #e8e8e8;
+        font-weight: bold;
+        font-size: 10pt;
+    }
+
+    .text-right {
+        text-align: right;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+
+    .total-row {
+        font-weight: bold;
+        background: #f5f5f5;
+        font-size: 10pt;
+    }
+
+    .final-amounts {
+        margin: 4px 0;
+        border: 1.5px solid #000;
+        padding: 4px;
+        background: #f9f9f9;
+        font-size: 10pt;
+    }
+
+    .final-amounts div {
+        display: flex;
+        justify-content: space-between;
+        padding: 2px 0;
+        font-size: 10pt;
+        line-height: 1.1;
+    }
+
+    .final-amounts .total-payable {
+        font-size: 10pt;
+        font-weight: bold;
+        border-top: 1.5px solid #000;
+        padding-top: 3px;
+        margin-top: 2px;
+    }
+
+    .balance-amount {
+        color: #2e7d32;
+        font-size: 10pt;
+        font-weight: bold;
+    }
+
+    .installments-table {
+        font-size: 9pt;
+    }
+
+    .installments-table th,
+    .installments-table td {
+        padding: 1px 3px;
+        font-size: 9pt;
+    }
+
+    .footer {
+        margin-top: 6px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 10pt;
+    }
+
+    .signature {
+        text-align: center;
+        margin-top: 8px;
+        font-size: 10pt;
+    }
+
+    .signature-line {
+        border-top: 1px solid #000;
+        width: 150px;
+        margin: 0 auto;
+        padding-top: 3px;
+        font-size: 10pt;
+    }
+
+    .field-group {
+        margin: 3px 0;
+        padding: 3px;
+        border: 1px solid #ddd;
+        background: #fafafa;
+        font-size: 10pt;
+    }
+
+    .field-group-title {
+        font-weight: bold;
+        font-size: 10pt;
+        margin-bottom: 2px;
+        color: #333;
+    }
+
+    @media print {
+        html, body {
+            height: 297mm;
+            overflow: hidden;
+            font-size: 10pt;
+        }
+        .header h1 {
+            font-size: 10pt;
+        }
+        .slip-title {
+            font-size: 10pt;
+        }
+    }
+
+    html, body { height: auto !important; }
+.slip-container { max-height: none !important; }
+
+</style>
+</head>
+
+<body>
+<div class="slip-container">
+
+    <div class="header">
+        <div class="slip-title">{{ slip.document_type or 'खरेदी पावती' }}</div>
+    </div>
+
+    <div>
+        <span><strong>कंपनी / मिल नाव:</strong> {{ slip.company_name }}</span><br>
+        <span><strong>पत्ता:</strong> {{ slip.company_address }}</span>
+    </div>
+
+    <br>
+
+    <div class="info-row">
+        <span><strong>बिल क्रमांक / इन्व्हॉईस क्रमांक:</strong> #{{ slip.bill_no }}</span>
+        <span><strong>दिनांक:</strong> {{ slip.date_formatted or slip.date }}</span>
+        <span><strong>वाहन क्रमांक:</strong> {{ slip.vehicle_no }}</span>
+    </div>
+
+    <!-- ---------------- PARTY DETAILS ---------------- -->
+    <div class="section-title">पार्टी डिटेल्स</div>
+
+    <table>
+        <tr>
+            <th>पार्टी नाव</th>
+            <td>{{ slip.party_name }}</td>
+            <th>तिकीट क्रमांक</th>
+            <td>{{ slip.ticket_no }}</td>
+        </tr>
+
+        <tr>
+            <th>मटेरियल</th>
+            <td>{{ slip.material_name }}</td>
+            <th>दलाल</th>
+            <td>{{ slip.broker }}</td>
+        </tr>
+
+        <tr>
+            <th>डिलिव्हरी अटी</th>
+            <td>{{ slip.terms_of_delivery }}</td>
+            <th>सप्लायर इनव्हॉईस क्रमांक</th>
+            <td>{{ slip.sup_inv_no }}</td>
+        </tr>
+
+        <tr>
+            <th>GST क्रमांक</th>
+            <td colspan="3">{{ slip.gst_no }}</td>
+        </tr>
+
+        <tr>
+            <th>मोबाईल नंबर</th>
+            <td colspan="3">{{ slip.mobile_number }}</td>
+        </tr>
+    </table>
+
+    <!-- ---------------- WEIGHT DETAILS ---------------- -->
+    <div class="section-title">वजन व दर तपशील</div>
+
+    <table>
+        <tr>
+            <th>बॅग्स</th>
+            <th>सरासरी बॅग्स वजन</th>
+            <th>निव्वळ वजन (KG)</th>
+            <th>बोरा वजन (KG)</th>
+            <th>अंतिम वजन (KG)</th>
+            <th>वजन (क्विंटल)</th>
+            <th>वजन (खंडी)</th>
+            <th>रेट बेसिस</th>
+            <th>रेट</th>
+            <th>रक्कम (₹)</th>
+        </tr>
+
+        <tr>
+            <td class="text-center">{{ "%.0f"|format(slip.bags) }}</td>
+            <td class="text-right">{{ "%.2f"|format(slip.avg_bag_weight) }}</td>
+            <td class="text-right">{{ "%.2f"|format(slip.net_weight_kg) }}</td>
+            <td class="text-right">{{ "%.2f"|format(slip.gunny_weight_kg) }}</td>
+            <td class="text-right">{{ "%.2f"|format(slip.final_weight_kg) }}</td>
+            <td class="text-right">{{ "%.3f"|format(slip.weight_quintal) }}</td>
+            <td class="text-right">{{ "%.3f"|format(slip.weight_khandi) }}</td>
+            <td class="text-center">{{ slip.rate_basis }}</td>
+            <td class="text-right">{{ "%.2f"|format(slip.rate_value) }}</td>
+            <td class="text-right">{{ "%.2f"|format(slip.total_purchase_amount) }}</td>
+        </tr>
+    </table>
+
+    <!-- ---------------- DEDUCTIONS ---------------- -->
+    <div class="section-title">कपात</div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>कपातीचा प्रकार</th>
+                <th>दर / टक्केवारी</th>
+                <th class="text-right">रक्कम (₹)</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            {% if slip.bank_commission > 0 %}
+            <tr>
+                <td>बँक कमिशन</td>
+                <td>-</td>
+                <td class="text-right">{{ "%.2f"|format(slip.bank_commission) }}</td>
+            </tr>
+            {% endif %}
+
+            {% if slip.postage > 0 %}
+            <tr>
+                <td>टपाल खर्च</td>
+                <td>-</td>
+                <td class="text-right">{{ "%.2f"|format(slip.postage) }}</td>
+            </tr>
+            {% endif %}
+
+            {% if slip.freight > 0 %}
+            <tr>
+                <td>वाहतूक</td>
+                <td>-</td>
+                <td class="text-right">{{ "%.2f"|format(slip.freight) }}</td>
+            </tr>
+            {% endif %}
+
+            {% if slip.rate_diff > 0 %}
+            <tr>
+                <td>दर फरक</td>
+                <td>-</td>
+                <td class="text-right">{{ "%.2f"|format(slip.rate_diff) }}</td>
+            </tr>
+            {% endif %}
+
+            {% if slip.quality_diff > 0 %}
+            <tr>
+                <td>गुणवत्ता फरक {% if slip.quality_diff_comment %}<br><small>({{ slip.quality_diff_comment }})</small>{% endif %}</td>
+                <td>-</td>
+                <td class="text-right">{{ "%.2f"|format(slip.quality_diff) }}</td>
+            </tr>
+            {% endif %}
+
+            {% if slip.moisture_ded > 0 %}
+            <tr>
+                <td>ओलावा कपात{% if slip.moisture_ded_comment %}<br><small>({{ slip.moisture_ded_comment }})</small>{% endif %}</td>
+                <td>
+                    {% if slip.moisture_ded_percent > 0 %}
+                        {{ "%.2f"|format(slip.moisture_ded_percent) }}%
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="text-right">{{ "%.2f"|format(slip.moisture_ded) }}</td>
+            </tr>
+            {% endif %}
+
+            {% if slip.tds > 0 %}
+            <tr>
+                <td>TDS</td>
+                <td>-</td>
+                <td class="text-right">{{ "%.2f"|format(slip.tds) }}</td>
+            </tr>
+            {% endif %}
+
+            {% if slip.batav > 0 %}
+            <tr>
+                <td>बटावं</td>
+                <td>{{ "%.2f"|format(slip.batav_percent) }}%</td>
+                <td class="text-right">{{ "%.2f"|format(slip.batav) }}</td>
+            </tr>
+            {% endif %}
+
+            {% if slip.dalali > 0 %}
+            <tr>
+                <td>दलाली</td>
+                <td>₹{{ "%.2f"|format(slip.dalali_rate) }}/100 KG</td>
+                <td class="text-right">{{ "%.2f"|format(slip.dalali) }}</td>
+            </tr>
+            {% endif %}
+
+            {% if slip.hammali > 0 %}
+            <tr>
+                <td>हमाली</td>
+                <td>₹{{ "%.2f"|format(slip.hammali_rate) }}/100 KG</td>
+                <td class="text-right">{{ "%.2f"|format(slip.hammali) }}</td>
+            </tr>
+            {% endif %}
+
+            <tr class="total-row">
+                <td colspan="2">एकूण कपात</td>
+                <td class="text-right">{{ "%.2f"|format(slip.total_deduction) }}</td>
+            </tr>
+
+        </tbody>
+    </table>
+
+    <!-- ---------------- AMOUNT SUMMARY ---------------- -->
+    <div class="final-amounts">
+        <div>
+            <span>एकूण रक्कम:</span>
+            <span>₹ {{ "%.2f"|format(slip.total_purchase_amount) }}</span>
+        </div>
+
+        <div>
+            <span>एकूण कपात:</span>
+            <span>₹ {{ "%.2f"|format(slip.total_deduction) }}</span>
+        </div>
+
+        <div class="total-payable">
+            <span>निव्वळ देय रक्कम:</span>
+            <span>₹ {{ "%.2f"|format(slip.payable_amount) }}</span>
+        </div>
+    </div>
+
+    <!-- ---------------- PAYMENT SUMMARY ---------------- -->
+    <div class="section-title" style="background:#2e7d32;">💰 देयक सारांश</div>
+
+    <table style="border:2px solid #2e7d32; background:#e8f5e9;">
+        <tr>
+            <td><strong>देय रक्कम:</strong></td>
+            <td class="text-right"><strong>₹ {{ "%.2f"|format(slip.payable_amount) }}</strong></td>
+        </tr>
+        <tr>
+            <td><strong>एकूण दिलेली रक्कम:</strong></td>
+            <td class="text-right"><strong>₹ {{ "%.2f"|format(slip.total_paid_amount) }}</strong></td>
+        </tr>
+        <tr style="background:#c8e6c9;">
+            <td><strong>शिल्लक रक्कम:</strong></td>
+            <td class="text-right" style="color:#1b5e20;"><strong>₹ {{ "%.2f"|format(slip.balance_amount) }}</strong></td>
+        </tr>
+    </table>
+
+    <!-- ---------------- INSTALLMENTS ---------------- -->
+    {% set has_instalments = slip.instalment_1_date or slip.instalment_1_amount or slip.instalment_1_comment or slip.instalment_2_date or slip.instalment_2_amount or slip.instalment_2_comment or slip.instalment_3_date or slip.instalment_3_amount or slip.instalment_3_comment or slip.instalment_4_date or slip.instalment_4_amount or slip.instalment_4_comment or slip.instalment_5_date or slip.instalment_5_amount or slip.instalment_5_comment %}
+        {% if has_instalments %}
+    <div class="section-title">हप्ते तपशील</div>
+
+    <table class="installments-table">
+        <thead>
+            <tr>
+                <th>क्र.</th>
+                <th>दिनांक</th>
+                <th>रक्कम</th>
+                <th>पद्धत</th>
+                <th>बँक खाते</th>
+                <th>टिप्पणी</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for i in range(1, 6) %}
+            {% set date_field = 'instalment_' ~ i ~ '_date' %}
+            {% set amount_field = 'instalment_' ~ i ~ '_amount' %}
+            {% set method_field = 'instalment_' ~ i ~ '_payment_method' %}
+            {% set bank_field = 'instalment_' ~ i ~ '_payment_bank_account' %}
+            {% set comment_field = 'instalment_' ~ i ~ '_comment' %}
+
+            {% set date = slip[date_field] %}
+            {% set amount = slip[amount_field] %}
+            {% set method = slip[method_field] %}
+            {% set bank = slip[bank_field] %}
+            {% set comment = slip[comment_field] %}
+
+            {% if date or amount or method or bank or comment %}
+            <tr>
+                <td class="text-center">{{ i }}</td>
+                <td>{{ date }}</td>
+                <td class="text-right">₹{{ "%.2f"|format(amount) }}</td>
+                <td>{{ method }}</td>
+                <td>{{ bank }}</td>
+                <td>{{ comment }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <!-- ---------------- GODOWN ---------------- -->
+    {% if slip.paddy_unloading_godown %}
+    <div class="field-group">
+        <div class="field-group-title">धान उतार गोदाम</div>
+        <div>{{ slip.paddy_unloading_godown }}</div>
+    </div>
+    {% endif %}
+
+    <!-- ---------------- SIGNATURES ---------------- -->
+    <div class="footer">
+        <div class="signature-line">तयार केले<br>{{ slip.prepared_by }}</div>
+        <div class="signature-line">अधिकृत स्वाक्षरी<br>{{ slip.authorised_sign }}</div>
+    </div>
+
+</div>
+
+</body>
+</html>
