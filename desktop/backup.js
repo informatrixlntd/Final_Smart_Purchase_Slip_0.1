@@ -1,19 +1,33 @@
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 const { google } = require('googleapis');
-const { BrowserWindow, shell, ipcMain } = require('electron');
+const { shell } = require('electron');
 
-const BACKUP_DIR = path.join(process.env.USERPROFILE || process.env.HOME, 'Documents', 'smart_purchase_slip_backup');
+// ----------------------------
+// CONFIG
+// ----------------------------
+const BACKUP_DIR = path.join(
+    process.env.USERPROFILE || process.env.HOME,
+    'Documents',
+    'smart_purchase_slip_backup'
+);
 
-// Ensure backup directory exists
+const TOKEN_PATH = path.join(__dirname, "tokens.json"); // token storage
+
+const CLIENT_ID = "432729181710-4jnntjamivku6a3in4k0vo4ft4ag8vg6.apps.googleusercontent.com";
+const CLIENT_SECRET = "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";
+const REDIRECT_URI = "http://localhost:5000";
+
+// Ensure backup folder exists
 if (!fs.existsSync(BACKUP_DIR)) {
     fs.mkdirSync(BACKUP_DIR, { recursive: true });
 }
 
-// ----------------------
+// ---------------------------------------------------------
 // CREATE MYSQL BACKUP
-// ----------------------
+// ---------------------------------------------------------
 function createMySQLBackup(dbConfig) {
     return new Promise((resolve, reject) => {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -22,94 +36,125 @@ function createMySQLBackup(dbConfig) {
 
         const command = `mysqldump -h ${dbConfig.host} -P ${dbConfig.port} -u ${dbConfig.user} -p${dbConfig.password} ${dbConfig.database} > "${backupFilePath}"`;
 
-        exec(command, (error, stdout, stderr) => {
-            if (error) {
-                console.error("Backup error:", error);
-                reject(error);
-                return;
-            }
-
-            if (stderr) {
-                console.warn("Backup stderr:", stderr);
-            }
-
-            console.log("Backup created:", backupFilePath);
+        exec(command, (error) => {
+            if (error) return reject(error);
             resolve(backupFilePath);
         });
     });
 }
 
-// ----------------------
-// GOOGLE AUTH (OOB)
-// ----------------------
-async function authenticateGoogleDrive() {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const oauth2Client = new google.auth.OAuth2(
-                "432729181710-4jnntjamivku6a3in4k0vo4ft4ag8vg6.apps.googleusercontent.com",
-                "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",
-                "http://localhost:5000/" // Desktop approved redirect
-            );
-
-            const authUrl = oauth2Client.generateAuthUrl({
-                access_type: "offline",
-                scope: ["https://www.googleapis.com/auth/drive.file"],
-                prompt: "consent"
-            });
-
-            // Open Google login flow in default browser
-            shell.openExternal(authUrl);
-
-            // ----------------------
-            // Prompt window for code input
-            // ----------------------
-            const promptWindow = new BrowserWindow({
-                width: 450,
-                height: 220,
-                resizable: false,
-                title: "Google Authentication",
-                webPreferences: {
-                    nodeIntegration: true,
-                    contextIsolation: false // IMPORTANT - FIXES IPC
-                }
-            });
-
-            promptWindow.loadURL(`data:text/html,
-                <h3>Enter Google Authentication Code</h3>
-                <input id="code" style="width:90%;height:35px;font-size:16px;margin-bottom:10px;" />
-                <button onclick="submit()" style="width:120px;height:35px;">Submit</button>
-
-                <script>
-                    const { ipcRenderer } = require('electron');
-                    function submit() {
-                        const code = document.getElementById('code').value.trim();
-                        ipcRenderer.send('oauth-code', code);
-                    }
-                </script>
-            `);
-
-            // Wait for IPC code from promptWindow
-            ipcMain.once("oauth-code", async (event, code) => {
-                try {
-                    const { tokens } = await oauth2Client.getToken(code);
-                    oauth2Client.setCredentials(tokens);
-                    promptWindow.close();
-                    resolve(oauth2Client);
-                } catch (err) {
-                    promptWindow.close();
-                    reject(err);
-                }
-            });
-
-        } catch (err) {
-            reject(err);
+// ---------------------------------------------------------
+// LOAD SAVED TOKENS (if available)
+// ---------------------------------------------------------
+function loadSavedTokens() {
+    try {
+        if (fs.existsSync(TOKEN_PATH)) {
+            const tokens = JSON.parse(fs.readFileSync(TOKEN_PATH, "utf8"));
+            return tokens;
         }
+    } catch (e) {
+        console.error("Failed to load saved tokens", e);
+    }
+    return null;
+}
+
+// ---------------------------------------------------------
+// SAVE TOKENS TO FILE
+// ---------------------------------------------------------
+function saveTokens(tokens) {
+    try {
+        fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens, null, 2), "utf8");
+        console.log("Tokens saved.");
+    } catch (err) {
+        console.error("Failed to save tokens:", err);
+    }
+}
+
+// ---------------------------------------------------------
+// CREATE GOOGLE OAUTH CLIENT
+// ---------------------------------------------------------
+function createOAuthClient() {
+    const oauth2Client = new google.auth.OAuth2(
+        CLIENT_ID,
+        CLIENT_SECRET,
+        REDIRECT_URI
+    );
+
+    const saved = loadSavedTokens();
+    if (saved) {
+        console.log("Using saved tokens.");
+        oauth2Client.setCredentials(saved);
+    }
+
+    // Auto-save refresh tokens whenever Google refreshes them
+    oauth2Client.on("tokens", (tokens) => {
+        const current = oauth2Client.credentials;
+        const merged = { ...current, ...tokens };
+        saveTokens(merged);
+    });
+
+    return oauth2Client;
+}
+
+// ---------------------------------------------------------
+// FULL AUTOMATIC GOOGLE LOGIN (No copy–paste)
+// ---------------------------------------------------------
+async function authenticateGoogleDrive(mainWindow) {
+    return new Promise((resolve, reject) => {
+        const oauth2Client = createOAuthClient();
+
+        // If we already have valid tokens → skip login
+        if (oauth2Client.credentials && oauth2Client.credentials.access_token) {
+            console.log("Already authenticated with Google.");
+            return resolve(oauth2Client);
+        }
+
+        console.log("No valid tokens found -> Starting authentication flow...");
+
+        const authUrl = oauth2Client.generateAuthUrl({
+            access_type: "offline",
+            scope: ["https://www.googleapis.com/auth/drive.file"],
+            prompt: "consent"
+        });
+
+        // Open Google login
+        shell.openExternal(authUrl);
+
+        // Start local server to capture redirect
+        const server = http.createServer(async (req, res) => {
+            try {
+                const urlObj = new URL(req.url, REDIRECT_URI);
+                const code = urlObj.searchParams.get("code");
+
+                if (!code) {
+                    res.end("Invalid request");
+                    return;
+                }
+
+                res.end("<h2>Authentication successful! You can close this window.</h2>");
+                server.close();
+
+                const { tokens } = await oauth2Client.getToken(code);
+                oauth2Client.setCredentials(tokens);
+                saveTokens(tokens);
+
+                resolve(oauth2Client);
+            } catch (err) {
+                res.end("<h2>Authentication failed</h2>");
+                server.close();
+                reject(err);
+            }
+        });
+
+        server.listen(5000, () => {
+            console.log("OAuth redirect listener running on http://localhost:5000");
+        });
     });
 }
 
-// ----------------------
+// ---------------------------------------------------------
 // UPLOAD TO GOOGLE DRIVE
-// ----------------------
+// ---------------------------------------------------------
 async function uploadToGoogleDrive(filePath, auth) {
     const drive = google.drive({ version: "v3", auth });
 
@@ -123,40 +168,33 @@ async function uploadToGoogleDrive(filePath, auth) {
         body: fs.createReadStream(filePath)
     };
 
-    try {
-        const response = await drive.files.create({
-            requestBody: fileMetadata,
-            media: media,
-            fields: "id,name"
-        });
+    const result = await drive.files.create({
+        requestBody: fileMetadata,
+        media,
+        fields: "id,name"
+    });
 
-        console.log("File uploaded to Google Drive:", response.data);
-        return response.data;
-    } catch (error) {
-        console.error("Error uploading to Google Drive:", error);
-        throw error;
-    }
+    return result.data;
 }
 
-// ----------------------
-// FULL BACKUP + UPLOAD WORKFLOW
-// ----------------------
+// ---------------------------------------------------------
+// FULL WORKFLOW
+// ---------------------------------------------------------
 async function performBackupAndUpload(dbConfig, mainWindow) {
     try {
-        mainWindow.webContents.send("backup-status", "Creating database backup...");
+        mainWindow.webContents.send("backup-status", "Creating MySQL backup...");
         const backupFilePath = await createMySQLBackup(dbConfig);
 
-        mainWindow.webContents.send("backup-status", "Opening Google authentication...");
-        const auth = await authenticateGoogleDrive();
+        mainWindow.webContents.send("backup-status", "Authenticating with Google...");
+        const auth = await authenticateGoogleDrive(mainWindow);
 
         mainWindow.webContents.send("backup-status", "Uploading backup to Google Drive...");
         await uploadToGoogleDrive(backupFilePath, auth);
 
-        mainWindow.webContents.send("backup-success", "Backup completed successfully!");
+        mainWindow.webContents.send("backup-success", "Backup successfully uploaded to Google Drive!");
         return true;
-
     } catch (error) {
-        console.error("Backup failed:", error);
+        console.error(error);
         mainWindow.webContents.send("backup-error", error.message || "Backup failed.");
         return false;
     }

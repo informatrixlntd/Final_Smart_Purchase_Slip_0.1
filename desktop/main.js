@@ -225,193 +225,136 @@ ipcMain.on('logout', () => {
  * WhatsApp sharing handler with automated file attachment
  * Opens WhatsApp Desktop with specific contact and automates file attachment
  */
+
+
+
 ipcMain.on('share-whatsapp', async (event, data) => {
     const { shell } = require('electron');
-    const { exec, spawn } = require('child_process');
+    const { exec } = require('child_process');
     const os = require('os');
 
-    const { filePath, phoneNumber, billNo } = data;
+    const { filePath, phoneNumber } = data;
 
-    console.log(`\n${'='.repeat(60)}`);
-    console.log(`📱 SHARING ON WHATSAPP`);
-    console.log(`Phone: ${phoneNumber}`);
-    console.log(`File: ${filePath}`);
-    console.log('='.repeat(60));
+    console.log("\n================================================");
+    console.log("📱 WHATSAPP SHARE");
+    console.log("Phone:", phoneNumber);
+    console.log("File:", filePath);
+    console.log("================================================");
 
     try {
         if (process.platform === 'win32') {
-            // Windows implementation with automation
 
-            // Step 1: Create PowerShell script for automation
+            // FIX: correct Windows path
+            const fixedPath = filePath.replace(/\//g, '\\');
+
+            // Create PowerShell script
             const psScriptPath = path.join(os.tmpdir(), 'whatsapp-share.ps1');
+
             const psScript = `
-# WhatsApp Auto-Share Script
+# WhatsApp Auto-Attach Script
+
 Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName Microsoft.VisualBasic
 Add-Type -AssemblyName UIAutomationClient
 
-# Function to send keys
-function Send-Keys {
-    param([string]$keys)
-    [System.Windows.Forms.SendKeys]::SendWait($keys)
-    Start-Sleep -Milliseconds 300
-}
 
-Write-Host "Starting WhatsApp share automation..."
-
-# Open WhatsApp Desktop with specific contact
+Write-Host "Opening WhatsApp..."
 Start-Process "whatsapp://send?phone=${phoneNumber}"
-Write-Host "Opening WhatsApp Desktop for +${phoneNumber}..."
 Start-Sleep -Seconds 4
 
-# Wait for WhatsApp window to be ready
-$maxAttempts = 10
-$attempt = 0
-$whatsappProcess = $null
-
-while ($attempt -lt $maxAttempts -and $null -eq $whatsappProcess) {
-    $whatsappProcess = Get-Process | Where-Object { $_.MainWindowTitle -like "*WhatsApp*" } | Select-Object -First 1
-    if ($null -eq $whatsappProcess) {
-        Write-Host "Waiting for WhatsApp to open... (attempt $($attempt + 1))"
+# Detect WhatsApp window
+$attempts = 0
+$proc = $null
+while ($attempts -lt 10 -and $proc -eq $null) {
+    $proc = Get-Process | Where-Object { $_.MainWindowTitle -like "*WhatsApp*" } | Select-Object -First 1
+    if ($proc -eq $null) {
         Start-Sleep -Seconds 1
-        $attempt++
+        $attempts++
     }
 }
 
-if ($whatsappProcess) {
-    Write-Host "WhatsApp found - PID: $($whatsappProcess.Id)"
-
-    # Bring WhatsApp window to front
-    $null = [System.Reflection.Assembly]::LoadWithPartialName("Microsoft.VisualBasic")
-    [Microsoft.VisualBasic.Interaction]::AppActivate($whatsappProcess.Id)
-    Start-Sleep -Milliseconds 800
-
-    Write-Host "Activating WhatsApp window..."
-
-    # Copy file to clipboard as file (not path)
-    $file = Get-Item "${filePath.replace(/\//g, '\\')}"
-    Set-Clipboard -Path $file.FullName
-    Write-Host "File copied to clipboard: $($file.Name)"
-    Start-Sleep -Milliseconds 500
-
-    # Click in message box area first
-    Send-Keys "{TAB}"
-    Start-Sleep -Milliseconds 300
-
-    # Use Ctrl+V to paste file into WhatsApp
-    # WhatsApp Desktop automatically detects file in clipboard and shows preview
-    Write-Host "Pasting file into chat..."
-    Send-Keys "^v"
-    Start-Sleep -Milliseconds 1500
-
-    # The file should now be attached with preview
-    # Wait a moment for preview to load
-    Write-Host "File attachment preview should now be visible"
-    Write-Host "✅ Automation complete - PDF ready to send!"
-
-} else {
-    Write-Host "❌ WhatsApp window not found - showing file location instead"
-    explorer.exe /select,"${filePath.replace(/\//g, '\\')}"
+if ($proc -eq $null) {
+    Write-Host "WhatsApp not found"
+    exit
 }
+
+Write-Host "Activating WhatsApp..."
+[Microsoft.VisualBasic.Interaction]::AppActivate($proc.Id)
+Start-Sleep -Milliseconds 1000
+
+# Focus the message input field
+$automation = New-Object -ComObject UIAutomationClient.CUIAutomation
+$root = $automation.GetRootElement()
+
+$waWin = $root.FindFirst(
+    0x1,
+    $automation.CreatePropertyCondition(30005, "WhatsApp")
+)
+
+if ($waWin -ne $null) {
+    $edit = $waWin.FindFirst(
+        0x4,
+        $automation.CreatePropertyCondition(30003, 50004) # Edit box
+    )
+    if ($edit -ne $null) {
+        $edit.SetFocus()
+        Send-Keys "{TAB}"
+Start-Sleep -Milliseconds 200
+        // Start-Sleep -Milliseconds 300
+    }
+}
+
+Write-Host "Preparing file to clipboard..."
+$file = "${fixedPath}"
+
+$data = New-Object System.Windows.Forms.DataObject
+$list = New-Object System.Collections.Specialized.StringCollection
+$list.Add($file)
+$data.SetFileDropList($list)
+[System.Windows.Forms.Clipboard]::SetDataObject($data, $true)
+
+Start-Sleep -Milliseconds 500
+
+Write-Host "Pasting file..."
+[System.Windows.Forms.SendKeys]::SendWait("^v")
+
+Start-Sleep -Seconds 2
+Write-Host "DONE - File attached successfully!"
 `;
 
-            // Write PowerShell script to temp file
+            // Write script to temp file
             fs.writeFileSync(psScriptPath, psScript);
 
-            // Execute PowerShell script
-            console.log('🤖 Running automation script...');
-            const psCommand = `powershell.exe -ExecutionPolicy Bypass -File "${psScriptPath}"`;
+            console.log("Running PowerShell automation...");
 
-            exec(psCommand, (error, stdout, stderr) => {
-                // Clean up temp script
-                try {
-                    fs.unlinkSync(psScriptPath);
-                } catch (e) {
-                    console.error('Failed to delete temp script:', e);
-                }
+            exec(`powershell.exe -ExecutionPolicy Bypass -File "${psScriptPath}"`, 
+                (error, stdout, stderr) => {
+
+                try { fs.unlinkSync(psScriptPath); } catch {}
 
                 if (error) {
-                    console.error('PowerShell automation error:', error);
-                    // Fallback: just open WhatsApp and show file
+                    console.error("PowerShell error:", error);
                     exec(`start "" "whatsapp://send?phone=${phoneNumber}"`);
                     setTimeout(() => shell.showItemInFolder(filePath), 2000);
                 } else {
-                    console.log('✅ Automation completed:', stdout);
+                    console.log(stdout);
+                    console.log("WhatsApp automation complete.");
                 }
             });
 
-            // Show user notification
-            setTimeout(() => {
-                const notification = new BrowserWindow({
-                    width: 400,
-                    height: 200,
-                    frame: false,
-                    transparent: true,
-                    alwaysOnTop: true,
-                    webPreferences: {
-                        nodeIntegration: false
-                    }
-                });
-
-                const notificationHTML = `
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            font-family: Arial, sans-serif;
-            color: white;
-        }
-        h2 { margin: 0 0 10px 0; font-size: 18px; }
-        p { margin: 5px 0; font-size: 14px; }
-    </style>
-</head>
-<body>
-    <h2>📱 WhatsApp Share</h2>
-    <p>✅ WhatsApp Desktop opened</p>
-    <p>✅ Chat with +${phoneNumber} loaded</p>
-    <p>✅ PDF file attached automatically</p>
-    <p style="margin-top: 15px; font-weight: bold;">Just press Send in WhatsApp! 🚀</p>
-    <script>
-        setTimeout(() => window.close(), 5000);
-    </script>
-</body>
-</html>
-                `;
-
-                notification.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(notificationHTML));
-                notification.show();
-
-                setTimeout(() => {
-                    if (!notification.isDestroyed()) {
-                        notification.close();
-                    }
-                }, 5000);
-            }, 3000);
-
         } else {
-            // Mac/Linux: Open WhatsApp and show file location
-            shell.openExternal(`whatsapp://send?phone=${phoneNumber}`).catch(() => {
-                shell.openExternal(`https://wa.me/${phoneNumber}`);
-            });
-
-            setTimeout(() => {
-                shell.showItemInFolder(filePath);
-            }, 2000);
+            // Mac/Linux fallback
+            shell.openExternal(`whatsapp://send?phone=${phoneNumber}`);
+            setTimeout(() => shell.showItemInFolder(filePath), 2500);
         }
 
     } catch (error) {
-        console.error('❌ Error sharing on WhatsApp:', error);
-        dialog.showErrorBox(
-            'WhatsApp Share Error',
-            `Failed to open WhatsApp:\n\n${error.message}\n\nThe PDF has been saved to:\n${filePath}\n\nPlease attach it manually.`
-        );
+        console.error("WhatsApp Share Error:", error);
+        dialog.showErrorBox("WhatsApp Share Error",
+            `Failed to share on WhatsApp:\n${error.message}`);
     }
 });
+
 
 /**
  * Print slip HTML directly (correct method)
@@ -697,7 +640,7 @@ ipcMain.on('print-slip', async (event, data) => {
                 });
 
                 // Show success message
-                alert('📱 WhatsApp Automation Started\\n\\nOpening WhatsApp Desktop...\\nChat: +' + whatsappNumber + '\\nPDF: ' + fileName + '\\n\\nThe PDF will be automatically attached.\\nJust press Send in WhatsApp! 🚀');
+                // alert('📱 WhatsApp Automation Started\\n\\nOpening WhatsApp Desktop...\\nChat: +' + whatsappNumber + '\\nPDF: ' + fileName + '\\n\\nThe PDF will be automatically attached.\\nJust press Send in WhatsApp! 🚀');
 
             } catch (error) {
                 alert('Error preparing WhatsApp share:\\n\\n' + error.message + '\\n\\nPlease try again or contact support.');
