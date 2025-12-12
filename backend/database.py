@@ -1,21 +1,45 @@
 import mysql.connector
 from mysql.connector.pooling import MySQLConnectionPool
 import os
+import sys
 import json
 
 # Load MySQL configuration from config file or environment
 def load_db_config():
-    config_file = os.path.join(os.path.dirname(__file__), '..', 'config.json')
-    if os.path.exists(config_file):
-        with open(config_file, 'r') as f:
-            config = json.load(f)
-            return config.get('database', {})
+    # Try multiple locations for config.json
+    config_paths = []
+
+    # If running as PyInstaller bundle
+    if getattr(sys, 'frozen', False):
+        # Running as compiled executable
+        bundle_dir = sys._MEIPASS
+        # Config should be in parent directory of dist-backend
+        config_paths.append(os.path.join(os.path.dirname(sys.executable), '..', 'config.json'))
+        config_paths.append(os.path.join(bundle_dir, 'config.json'))
+    else:
+        # Running in normal Python environment
+        config_paths.append(os.path.join(os.path.dirname(__file__), '..', 'config.json'))
+
+    # Try each path
+    for config_file in config_paths:
+        if os.path.exists(config_file):
+            try:
+                with open(config_file, 'r') as f:
+                    config = json.load(f)
+                    print(f"✓ Loaded config from: {config_file}")
+                    return config.get('database', {})
+            except Exception as e:
+                print(f"⚠ Error reading config from {config_file}: {e}")
+                continue
+
+    # Fallback to defaults
+    print("⚠ No config.json found, using default configuration")
     return {
-        'host': os.getenv('DB_HOST', 'localhost'),
-        'port': int(os.getenv('DB_PORT', 3306)),
-        'user': os.getenv('DB_USER', 'root'),
-        'password': os.getenv('DB_PASSWORD', 'root'),
-        'database': os.getenv('DB_NAME', 'purchase_slips_db')
+        'host': 'localhost',
+        'port': 3306,
+        'user': 'root',
+        'password': 'root',
+        'database': 'purchase_slips_db'
     }
 
 # MySQL Configuration

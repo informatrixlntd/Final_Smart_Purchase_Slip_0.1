@@ -265,21 +265,53 @@ function startPythonBackend() {
         }
     }
 
+    // Create log file for backend output
+    const logDir = path.join(app.getPath('userData'), 'logs');
+    if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const logFile = path.join(logDir, `backend-${timestamp}.log`);
+    const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+
+    console.log('Backend logs will be saved to:', logFile);
+
     pythonProcess.stdout.on('data', (data) => {
-        console.log(`Backend: ${data}`);
+        const output = `[STDOUT] ${data}`;
+        console.log(output);
+        logStream.write(output);
     });
 
     pythonProcess.stderr.on('data', (data) => {
-        console.error(`Backend Error: ${data}`);
+        const output = `[STDERR] ${data}`;
+        console.error(output);
+        logStream.write(output);
     });
 
     pythonProcess.on('error', (error) => {
-        console.error('Backend process error:', error);
-        dialog.showErrorBox('Backend Error', `Failed to start backend: ${error.message}`);
+        const errorMsg = `[ERROR] Failed to start backend: ${error.message}\n`;
+        console.error(errorMsg);
+        logStream.write(errorMsg);
+        dialog.showErrorBox('Backend Error', `Failed to start backend: ${error.message}\n\nLog file: ${logFile}`);
+    });
+
+    pythonProcess.on('exit', (code, signal) => {
+        const exitMsg = `[EXIT] Backend process exited with code ${code}, signal ${signal}\n`;
+        console.log(exitMsg);
+        logStream.write(exitMsg);
+        logStream.end();
+
+        if (code !== 0 && code !== null) {
+            dialog.showErrorBox(
+                'Backend Crashed',
+                `Backend process exited unexpectedly with code ${code}\n\nCheck log file:\n${logFile}`
+            );
+        }
     });
 
     setTimeout(() => {
-        console.log('Backend started successfully');
+        console.log('Backend startup sequence complete');
     }, 3000);
 }
 
