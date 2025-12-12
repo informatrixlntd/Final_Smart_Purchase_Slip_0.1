@@ -26,14 +26,14 @@ def load_db_config():
             try:
                 with open(config_file, 'r') as f:
                     config = json.load(f)
-                    print(f"✓ Loaded config from: {config_file}")
+                    print(f"[OK] Loaded config from: {config_file}")
                     return config.get('database', {})
             except Exception as e:
-                print(f"⚠ Error reading config from {config_file}: {e}")
+                print(f"[WARNING] Error reading config from {config_file}: {e}")
                 continue
 
     # Fallback to defaults
-    print("⚠ No config.json found, using default configuration")
+    print("[WARNING] No config.json found, using default configuration")
     return {
         'host': 'localhost',
         'port': 3306,
@@ -60,7 +60,7 @@ def init_connection_pool():
             pool_reset_session=True,
             **DB_CONFIG
         )
-        print("✓ MySQL connection pool created successfully (size: 10)")
+        print("[OK] MySQL connection pool created successfully (size: 10)")
     except mysql.connector.Error as err:
         if err.errno == 1049:
             print("Database doesn't exist. Creating database...")
@@ -72,7 +72,7 @@ def init_connection_pool():
                 **DB_CONFIG
             )
         else:
-            print(f"❌ Error creating connection pool: {err}")
+            print(f"[ERROR] Error creating connection pool: {err}")
             raise
 
 def create_database():
@@ -86,9 +86,9 @@ def create_database():
         conn = mysql.connector.connect(**temp_config)
         cursor = conn.cursor()
         cursor.execute(f"CREATE DATABASE IF NOT EXISTS {database_name}")
-        print(f"✓ Database '{database_name}' created successfully")
+        print(f"[OK] Database '{database_name}' created successfully")
     except mysql.connector.Error as err:
-        print(f"❌ Error creating database: {err}")
+        print(f"[ERROR] Error creating database: {err}")
         raise
     finally:
         if cursor:
@@ -110,7 +110,7 @@ def get_db_connection():
         conn.ping(reconnect=True, attempts=3, delay=2)
         return conn
     except mysql.connector.Error as e:
-        print(f"❌ Error getting connection from pool: {e}")
+        print(f"[ERROR] Error getting connection from pool: {e}")
         raise
 
 def init_db():
@@ -122,7 +122,7 @@ def init_db():
     try:
         init_connection_pool()
 
-        print(f"✓ Initializing database: {DB_CONFIG['database']}")
+        print(f"[OK] Initializing database: {DB_CONFIG['database']}")
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
@@ -239,7 +239,7 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        print("✅ Table 'unloading_godowns' verified/created")
+        print("[OK] Table 'unloading_godowns' verified/created")
 
         # Check and add missing columns to purchase_slips
         cursor.execute("SHOW COLUMNS FROM purchase_slips")
@@ -303,7 +303,7 @@ def init_db():
             if col_name in existing_columns:
                 try:
                     cursor.execute(f"ALTER TABLE purchase_slips MODIFY COLUMN {col_name} DATETIME")
-                    print(f"✓ Converted column {col_name} to DATETIME")
+                    print(f"[OK] Converted column {col_name} to DATETIME")
                 except mysql.connector.Error as err:
                     print(f"Warning: Could not convert column {col_name}: {err}")
 
@@ -311,7 +311,7 @@ def init_db():
             if col_name not in existing_columns:
                 try:
                     cursor.execute(f"ALTER TABLE purchase_slips ADD COLUMN {col_name} {col_type}")
-                    print(f"✓ Added column: {col_name}")
+                    print(f"[OK] Added column: {col_name}")
                 except mysql.connector.Error as err:
                     if err.errno != 1060:  # Ignore duplicate column error
                         print(f"Warning: Could not add column {col_name}: {err}")
@@ -326,7 +326,7 @@ def init_db():
                 INSERT INTO users (username, password, full_name, role)
                 VALUES (%s, %s, %s, %s)
             ''', ('admin', 'admin', 'Administrator', 'admin'))
-            print("✓ Default admin user created (username: admin, password: admin)")
+            print("[OK] Default admin user created (username: admin, password: admin)")
 
         # Add default unloading godowns if table is empty
         cursor.execute("SELECT COUNT(*) as count FROM unloading_godowns")
@@ -342,13 +342,13 @@ def init_db():
             ]
             for godown in default_godowns:
                 cursor.execute('INSERT IGNORE INTO unloading_godowns (name) VALUES (%s)', (godown,))
-            print(f"✓ Added {len(default_godowns)} default unloading godowns")
+            print(f"[OK] Added {len(default_godowns)} default unloading godowns")
 
         conn.commit()
-        print("✓ Database tables initialized successfully")
+        print("[OK] Database tables initialized successfully")
 
     except mysql.connector.Error as err:
-        print(f"❌ Error initializing database: {err}")
+        print(f"[ERROR] Error initializing database: {err}")
         if conn:
             conn.rollback()
         raise
@@ -375,7 +375,7 @@ def get_next_bill_no():
         return result['max_bill'] + 1
 
     except mysql.connector.Error as err:
-        print(f"❌ Error getting next bill number: {err}")
+        print(f"[ERROR] Error getting next bill number: {err}")
         raise
     finally:
         if cursor:
