@@ -4,11 +4,13 @@ block_cipher = None
 
 a = Analysis(
     ['backend/app.py'],
-    pathex=[],
+    pathex=['backend'],
     binaries=[],
     datas=[
         ('backend/templates', 'templates'),
         ('config.json', '.'),
+        ('backend/database.py', '.'),
+        ('backend/routes', 'routes'),
     ],
     hiddenimports=[
         'mysql.connector',
@@ -17,6 +19,10 @@ a = Analysis(
         'flask_cors',
         'jinja2',
         'werkzeug',
+        'database',
+        'routes',
+        'routes.slips',
+        'routes.auth',
     ],
     hookspath=[],
     hooksconfig={},

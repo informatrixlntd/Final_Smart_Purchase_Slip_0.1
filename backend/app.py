@@ -3,15 +3,40 @@ from flask_cors import CORS
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Setup path for imports (works in both dev and PyInstaller)
+if getattr(sys, 'frozen', False):
+    # Running as compiled executable
+    bundle_dir = sys._MEIPASS
+    sys.path.insert(0, bundle_dir)
+else:
+    # Running in normal Python environment
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from database import init_db, get_next_bill_no
-from routes.slips import slips_bp
-from routes.auth import auth_bp
+try:
+    from database import init_db, get_next_bill_no
+    from routes.slips import slips_bp
+    from routes.auth import auth_bp
+except ImportError as e:
+    print(f"Import error: {e}")
+    print(f"sys.path: {sys.path}")
+    print(f"Current directory: {os.getcwd()}")
+    if getattr(sys, 'frozen', False):
+        print(f"Bundle directory: {sys._MEIPASS}")
+    raise
+
+# Setup Flask paths (works in both dev and PyInstaller)
+if getattr(sys, 'frozen', False):
+    # Running as compiled executable - templates are bundled
+    template_folder = os.path.join(sys._MEIPASS, 'templates')
+    static_folder = None  # Not used in desktop app
+else:
+    # Running in normal Python environment
+    template_folder = 'templates'
+    static_folder = '../frontend/static'
 
 app = Flask(__name__,
-            static_folder='../frontend/static',
-            template_folder='templates')
+            static_folder=static_folder,
+            template_folder=template_folder)
 
 CORS(app)
 
@@ -40,6 +65,11 @@ if __name__ == '__main__':
     print("🌾 RICE MILL PURCHASE SLIP MANAGER")
     print("="*60)
     print("\n✅ Server starting...")
-    print("📍 Open your browser and go to: http://127.0.0.1:5000")
+    print("📍 Backend running on: http://127.0.0.1:5000")
+    if getattr(sys, 'frozen', False):
+        print("📦 Running from packaged executable")
     print("\n💡 Press CTRL+C to stop the server\n")
-    app.run(debug=True, host='127.0.0.1', port=5000)
+
+    # Use debug mode only in development
+    is_debug = not getattr(sys, 'frozen', False)
+    app.run(debug=is_debug, host='127.0.0.1', port=5000)
