@@ -42,7 +42,7 @@ echo.
 REM Step 3: Build Backend
 echo [3/7] Building Python backend with PyInstaller...
 echo This may take 2-3 minutes...
-pyinstaller backend.spec --clean --noconfirm
+pyinstaller backend.spec --clean --noconfirm --distpath .
 
 if errorlevel 1 (
     echo [ERROR] Backend build failed!
@@ -52,6 +52,9 @@ if errorlevel 1 (
 
 if not exist "dist-backend\purchase_slips_backend.exe" (
     echo [ERROR] Backend executable not created!
+    echo Expected location: dist-backend\purchase_slips_backend.exe
+    echo.
+    echo Check if PyInstaller completed successfully above.
     pause
     exit /b 1
 )

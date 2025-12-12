@@ -10,7 +10,7 @@ if exist build rmdir /s /q build
 
 echo.
 echo Step 2: Rebuild backend executable...
-pyinstaller backend.spec --clean
+pyinstaller backend.spec --clean --distpath .
 
 if errorlevel 1 (
     echo ERROR: Failed to build backend!
