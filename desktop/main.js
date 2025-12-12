@@ -18,15 +18,31 @@ function loadConfig() {
             configPath = path.join(__dirname, '..', 'config.json');
         }
 
+        console.log('Loading config from:', configPath);
+
         if (fs.existsSync(configPath)) {
             const configData = fs.readFileSync(configPath, 'utf8');
-            return JSON.parse(configData);
+            const config = JSON.parse(configData);
+            console.log('Configuration loaded successfully');
+            return config;
+        } else {
+            console.error('Config file not found at:', configPath);
+            const { dialog } = require('electron');
+            dialog.showErrorBox(
+                'Configuration Error',
+                'config.json file not found.\n\nPath: ' + configPath + '\n\nUsing default configuration.'
+            );
         }
     } catch (error) {
         console.error('Error loading config:', error);
+        const { dialog } = require('electron');
+        dialog.showErrorBox(
+            'Configuration Error',
+            'Failed to load config.json:\n\n' + error.message + '\n\nUsing default configuration.'
+        );
     }
 
-    // Default config if file not found
+    // Default config if file not found or error
     return {
         database: {
             host: 'localhost',
@@ -34,6 +50,10 @@ function loadConfig() {
             user: 'root',
             password: 'root',
             database: 'purchase_slips_db'
+        },
+        server: {
+            host: 'localhost',
+            port: 5000
         }
     };
 }
@@ -208,31 +228,41 @@ function startPythonBackend() {
     let backendPath;
 
     if (isPackaged) {
-        // In production, look for the packaged executable
+        // In production, look for the packaged executable in dist-backend folder
         if (process.platform === 'win32') {
-            backendPath = path.join(process.resourcesPath, 'backend', 'purchase_slips_backend.exe');
+            backendPath = path.join(process.resourcesPath, 'dist-backend', 'purchase_slips_backend.exe');
         } else {
-            backendPath = path.join(process.resourcesPath, 'backend', 'purchase_slips_backend');
+            backendPath = path.join(process.resourcesPath, 'dist-backend', 'purchase_slips_backend');
         }
 
         // Check if backend executable exists
         if (fs.existsSync(backendPath)) {
             console.log('Starting packaged backend:', backendPath);
             pythonProcess = spawn(backendPath, [], {
-                cwd: path.join(process.resourcesPath, 'backend')
+                cwd: path.join(process.resourcesPath, 'dist-backend')
             });
         } else {
             console.error('Backend executable not found:', backendPath);
-            dialog.showErrorBox('Backend Error', 'Backend executable not found. Please reinstall the application.');
+            dialog.showErrorBox('Backend Error', 'Backend executable not found at:\n\n' + backendPath + '\n\nPlease reinstall the application.');
             return;
         }
     } else {
-        // In development, use Python script
-        const pythonScript = path.join(__dirname, '..', 'backend', 'app.py');
-        console.log('Starting development backend:', pythonScript);
-        pythonProcess = spawn('python', [pythonScript], {
-            cwd: path.join(__dirname, '..')
-        });
+        // In development, check if .exe exists first (for testing), otherwise use Python
+        const devExePath = path.join(__dirname, '..', 'dist-backend', 'purchase_slips_backend.exe');
+
+        if (fs.existsSync(devExePath)) {
+            console.log('Starting development backend from .exe:', devExePath);
+            pythonProcess = spawn(devExePath, [], {
+                cwd: path.join(__dirname, '..', 'dist-backend')
+            });
+        } else {
+            // Fallback to Python script
+            const pythonScript = path.join(__dirname, '..', 'backend', 'app.py');
+            console.log('Starting development backend from Python:', pythonScript);
+            pythonProcess = spawn('python', [pythonScript], {
+                cwd: path.join(__dirname, '..')
+            });
+        }
     }
 
     pythonProcess.stdout.on('data', (data) => {

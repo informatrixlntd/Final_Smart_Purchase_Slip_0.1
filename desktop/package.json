@@ -27,14 +27,18 @@
       "output": "dist"
     },
     "files": [
-      "**/*",
-      "!node_modules",
-      "!dist"
+      "main.js",
+      "backup.js",
+      "app.html",
+      "login.html",
+      "splash.html",
+      "assets/**/*",
+      "package.json"
     ],
     "extraResources": [
       {
         "from": "../dist-backend",
-        "to": "backend",
+        "to": "dist-backend",
         "filter": ["**/*"]
       },
       {
