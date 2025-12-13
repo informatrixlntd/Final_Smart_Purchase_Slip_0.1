@@ -50,17 +50,24 @@ except ImportError as e:
 # Setup Flask paths (works in both dev and PyInstaller)
 print("[INFO] Setting up Flask paths...")
 if getattr(sys, 'frozen', False):
-    # Running as compiled executable - templates are bundled
+    # Running as compiled executable - all files are bundled in _MEIPASS
     template_folder = os.path.join(sys._MEIPASS, 'templates')
-    static_folder = None  # Not used in desktop app
+    static_folder = os.path.join(sys._MEIPASS, 'desktop', 'static')
+    desktop_folder = os.path.join(sys._MEIPASS, 'desktop')
     print(f"[INFO] Template folder: {template_folder}")
+    print(f"[INFO] Static folder: {static_folder}")
+    print(f"[INFO] Desktop folder: {desktop_folder}")
     print(f"[INFO] Template folder exists: {os.path.exists(template_folder)}")
+    print(f"[INFO] Desktop folder exists: {os.path.exists(desktop_folder)}")
     if os.path.exists(template_folder):
         print(f"[INFO] Templates: {os.listdir(template_folder)}")
+    if os.path.exists(desktop_folder):
+        print(f"[INFO] Desktop files: {os.listdir(desktop_folder)}")
 else:
     # Running in normal Python environment
     template_folder = 'templates'
     static_folder = '../desktop/static'
+    desktop_folder = '../desktop'
 
 print("[INFO] Creating Flask app...")
 app = Flask(__name__,
@@ -89,12 +96,12 @@ except Exception as e:
 @app.route('/')
 def index():
     """Serve the main form page"""
-    return send_from_directory('../desktop', 'index.html')
+    return send_from_directory(desktop_folder, 'index.html')
 
 @app.route('/reports')
 def reports():
     """Serve the reports page"""
-    return send_from_directory('../desktop', 'reports.html')
+    return send_from_directory(desktop_folder, 'reports.html')
 
 @app.route('/api/next-bill-no')
 def next_bill_no_route():
