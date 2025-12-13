@@ -1,210 +1,609 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
-const http = require('http');
+const { spawn, exec } = require('child_process');
 const fs = require('fs');
 
-let mainWindow = null;
-let loginWindow = null;
-let splashWindow = null;
-let backendProcess = null;
-let printWindow = null;  
+let mainWindow;
+let pythonProcess;
+let isBackupInProgress = false;
+let canCloseApp = false;
+let backendStartTime = null;
+let backendStartupComplete = false;
+let backendRestartCount = 0;
 
-const isDev = !app.isPackaged;
-const BACKEND_EXE = isDev
-    ? path.join(__dirname, '..', 'dist-backend', 'purchase_slips_backend.exe')
-    : path.join(process.resourcesPath, 'backend', 'purchase_slips_backend.exe');
-
-const BACKEND_URL = 'http://127.0.0.1:5000';
-
-function startBackend() {
-    return new Promise((resolve, reject) => {
-        console.log('[BACKEND] Starting backend server...');
-        console.log('[BACKEND] Executable path:', BACKEND_EXE);
-
-        if (!fs.existsSync(BACKEND_EXE)) {
-            console.error('[BACKEND] Backend executable not found at:', BACKEND_EXE);
-            reject(new Error(`Backend executable not found: ${BACKEND_EXE}`));
-            return;
+// Load configuration from config.json
+function loadConfig() {
+    try {
+        let configPath;
+        if (app.isPackaged) {
+            configPath = path.join(process.resourcesPath, 'config.json');
+        } else {
+            configPath = path.join(__dirname, '..', 'config.json');
         }
 
-        backendProcess = spawn(BACKEND_EXE, [], {
-            cwd: path.dirname(BACKEND_EXE),
-            detached: false,
-            windowsHide: true
-        });
+        console.log('Loading config from:', configPath);
 
-        backendProcess.stdout.on('data', (data) => {
-            console.log('[BACKEND]', data.toString().trim());
-        });
-
-        backendProcess.stderr.on('data', (data) => {
-            console.error('[BACKEND ERROR]', data.toString().trim());
-        });
-
-        backendProcess.on('error', (err) => {
-            console.error('[BACKEND] Failed to start:', err);
-            reject(err);
-        });
-
-        backendProcess.on('exit', (code) => {
-            console.log(`[BACKEND] Process exited with code ${code}`);
-            if (code !== 0 && code !== null) {
-                backendProcess = null;
-            }
-        });
-
-        let attempts = 0;
-        const maxAttempts = 30;
-        const checkInterval = setInterval(() => {
-            http.get(BACKEND_URL, (res) => {
-                if (res.statusCode === 200 || res.statusCode === 404) {
-                    console.log('[BACKEND] Backend is ready!');
-                    clearInterval(checkInterval);
-                    resolve();
-                }
-            }).on('error', () => {
-                attempts++;
-                if (attempts >= maxAttempts) {
-                    clearInterval(checkInterval);
-                    reject(new Error('Backend failed to start within timeout'));
-                }
-            });
-        }, 500);
-    });
-}
-
-function stopBackend() {
-    if (backendProcess) {
-        console.log('[BACKEND] Stopping backend server...');
-        try {
-            if (process.platform === 'win32') {
-                spawn('taskkill', ['/pid', backendProcess.pid, '/f', '/t']);
-            } else {
-                backendProcess.kill('SIGTERM');
-            }
-        } catch (error) {
-            console.error('[BACKEND] Error stopping backend:', error);
+        if (fs.existsSync(configPath)) {
+            const configData = fs.readFileSync(configPath, 'utf8');
+            const config = JSON.parse(configData);
+            console.log('Configuration loaded successfully');
+            return config;
+        } else {
+            console.error('Config file not found at:', configPath);
+            const { dialog } = require('electron');
+            dialog.showErrorBox(
+                'Configuration Error',
+                'config.json file not found.\n\nPath: ' + configPath + '\n\nUsing default configuration.'
+            );
         }
-        backendProcess = null;
+    } catch (error) {
+        console.error('Error loading config:', error);
+        const { dialog } = require('electron');
+        dialog.showErrorBox(
+            'Configuration Error',
+            'Failed to load config.json:\n\n' + error.message + '\n\nUsing default configuration.'
+        );
     }
+
+    // Default config if file not found or error
+    return {
+        database: {
+            host: 'localhost',
+            port: 3306,
+            user: 'root',
+            password: 'root',
+            database: 'purchase_slips_db'
+        },
+        server: {
+            host: 'localhost',
+            port: 5000
+        }
+    };
 }
 
-function createSplashWindow() {
-    splashWindow = new BrowserWindow({
+const config = loadConfig();
+
+function createWindow() {
+    // Create splash screen first
+    let splashWindow = new BrowserWindow({
         width: 500,
-        height: 300,
+        height: 500,
         transparent: true,
         frame: false,
         alwaysOnTop: true,
+        icon: path.join(__dirname, 'assets', 'spslogo.png'),
         webPreferences: {
-            nodeIntegration: false,
-            contextIsolation: true
+            nodeIntegration: false
         }
     });
 
     splashWindow.loadFile(path.join(__dirname, 'splash.html'));
-    splashWindow.center();
-}
-
-function createLoginWindow() {
-    if (splashWindow && !splashWindow.isDestroyed()) {
-        splashWindow.close();
-        splashWindow = null;
-    }
-
-    loginWindow = new BrowserWindow({
-        width: 450,
-        height: 600,
-        resizable: false,
-        frame: true,
-        icon: path.join(__dirname, 'assets', 'spslogo.png'),
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
-        },
-        title: 'Smart Purchase Slip Manager - Login'
-    });
-
-    loginWindow.loadFile(path.join(__dirname, 'login.html'));
-    loginWindow.center();
-
-    loginWindow.on('closed', () => {
-        loginWindow = null;
-        if (!mainWindow) {
-            app.quit();
-        }
-    });
-}
-
-function createMainWindow() {
-    if (loginWindow && !loginWindow.isDestroyed()) {
-        loginWindow.close();
-        loginWindow = null;
-    }
 
     mainWindow = new BrowserWindow({
         width: 1400,
         height: 900,
-        minWidth: 1000,
-        minHeight: 700,
         icon: path.join(__dirname, 'assets', 'spslogo.png'),
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
             enableRemoteModule: true
         },
-        title: 'Smart Purchase Slip Manager'
+        autoHideMenuBar: true,
+        resizable: true,
+        show: false
     });
 
-    mainWindow.loadFile(path.join(__dirname, 'app.html'));
-    mainWindow.maximize();
+    mainWindow.loadFile(path.join(__dirname, 'login.html'));
 
-    if (isDev) {
-        mainWindow.webContents.openDevTools();
-    }
+    mainWindow.once('ready-to-show', () => {
+        setTimeout(() => {
+            splashWindow.close();
+            mainWindow.show();
+        }, 2000);
+    });
 
-    mainWindow.on('closed', () => {
+    mainWindow.on('close', async (event) => {
+        if (!canCloseApp && !isBackupInProgress) {
+            event.preventDefault();
+            await showBackupDialog();
+        }
+    });
+
+    mainWindow.on('closed', function() {
         mainWindow = null;
     });
 }
 
-ipcMain.on('login-success', (event, userData) => {
-    console.log('[AUTH] Login successful, opening main window');
-    createMainWindow();
-});
+async function showBackupDialog() {
+    if (isBackupInProgress) return;
 
-ipcMain.on('logout', () => {
-    console.log('[AUTH] Logout requested');
-    if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.close();
-        mainWindow = null;
+    const result = await dialog.showMessageBox(mainWindow, {
+        type: 'warning',
+        title: 'Backup Required Before Exit',
+        message: 'Database backup is required before closing the application.',
+        detail: 'Click "Start Backup" to create a backup and upload it to Google Drive.',
+        buttons: ['Start Backup', 'Cancel'],
+        defaultId: 0,
+        cancelId: 1
+    });
+
+    if (result.response === 0) {
+        await performBackup();
     }
-    createLoginWindow();
-});
+}
 
-ipcMain.on('print-slip-html', async (event, slipId) => {
-    console.log('[PRINT] Direct HTML print requested for slip:', slipId);
+async function performBackup() {
+    isBackupInProgress = true;
 
     try {
-        if (!printWindow || printWindow.isDestroyed()) {
-            printWindow = new BrowserWindow({
-                width: 800,
-                height: 1100,
-                show: false,
-                webPreferences: {
-                    nodeIntegration: false,
-                    contextIsolation: true
+        const progressDialog = dialog.showMessageBox(mainWindow, {
+            type: 'info',
+            title: 'Backup in Progress',
+            message: 'Creating database backup...',
+            detail: 'Please wait. This may take a few moments.',
+            buttons: []
+        });
+
+        const dbConfig = config.database || {
+            host: 'localhost',
+            port: 3306,
+            user: 'root',
+            password: 'root',
+            database: 'purchase_slips_db'
+        };
+
+
+        // Try to use backup module if available
+        let backupSuccess = false;
+        try {
+            const backup = require('./backup');
+            backupSuccess = await backup.performBackupAndUpload(dbConfig, mainWindow);
+        } catch (error) {
+            console.error('Backup module error:', error);
+            // Fallback: just create local backup without Google Drive
+            backupSuccess = await createLocalBackupOnly(dbConfig);
+        }
+
+        isBackupInProgress = false;
+
+        if (backupSuccess) {
+            await dialog.showMessageBox(mainWindow, {
+                type: 'info',
+                title: 'Backup Completed',
+                message: 'Database backup completed successfully!',
+                detail: 'The application will now close.',
+                buttons: ['OK']
+            });
+
+            canCloseApp = true;
+            mainWindow.close();
+        } else {
+            await dialog.showMessageBox(mainWindow, {
+                type: 'error',
+                title: 'Backup Failed',
+                message: 'Database backup failed.',
+                detail: 'Please try again or contact support.',
+                buttons: ['OK']
+            });
+        }
+    } catch (error) {
+        isBackupInProgress = false;
+        console.error('Backup error:', error);
+        await dialog.showMessageBox(mainWindow, {
+            type: 'error',
+            title: 'Backup Error',
+            message: 'An error occurred during backup.',
+            detail: error.message,
+            buttons: ['OK']
+        });
+    }
+}
+
+function createLocalBackupOnly(dbConfig) {
+    return new Promise((resolve) => {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const backupDir = path.join(process.env.USERPROFILE || process.env.HOME, 'Documents', 'smart_purchase_slip_backup');
+
+        if (!fs.existsSync(backupDir)) {
+            fs.mkdirSync(backupDir, { recursive: true });
+        }
+
+        const backupFileName = `purchase_slips_backup_${timestamp}.sql`;
+        const backupFilePath = path.join(backupDir, backupFileName);
+
+        const command = `mysqldump -h ${dbConfig.host} -P ${dbConfig.port} -u ${dbConfig.user} -p${dbConfig.password} ${dbConfig.database} > "${backupFilePath}"`;
+
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                console.error('Local backup error:', error);
+                resolve(false);
+                return;
+            }
+            console.log('Local backup created:', backupFilePath);
+            resolve(true);
+        });
+    });
+}
+
+function startPythonBackend() {
+    // Reset backend startup tracking
+    backendStartTime = Date.now();
+    backendStartupComplete = false;
+
+    // Check if packaged backend executable exists
+    const isPackaged = app.isPackaged;
+    let backendPath;
+
+    if (isPackaged) {
+        // In production, look for the packaged executable in dist-backend folder
+        if (process.platform === 'win32') {
+            backendPath = path.join(process.resourcesPath, 'dist-backend', 'purchase_slips_backend.exe');
+        } else {
+            backendPath = path.join(process.resourcesPath, 'dist-backend', 'purchase_slips_backend');
+        }
+
+        // Check if backend executable exists
+        if (fs.existsSync(backendPath)) {
+            console.log('Starting packaged backend:', backendPath);
+            pythonProcess = spawn(backendPath, [], {
+                cwd: path.join(process.resourcesPath, 'dist-backend'),
+                env: {
+                    ...process.env,
+                    PYTHONIOENCODING: 'utf-8',
+                    PYTHONUNBUFFERED: '1'
+                }
+            });
+        } else {
+            console.error('Backend executable not found:', backendPath);
+            dialog.showErrorBox('Backend Error', 'Backend executable not found at:\n\n' + backendPath + '\n\nPlease reinstall the application.');
+            return;
+        }
+    } else {
+        // In development, check if .exe exists first (for testing), otherwise use Python
+        const devExePath = path.join(__dirname, '..', 'dist-backend', 'purchase_slips_backend.exe');
+
+        if (fs.existsSync(devExePath)) {
+            console.log('Starting development backend from .exe:', devExePath);
+            pythonProcess = spawn(devExePath, [], {
+                cwd: path.join(__dirname, '..', 'dist-backend'),
+                env: {
+                    ...process.env,
+                    PYTHONIOENCODING: 'utf-8',
+                    PYTHONUNBUFFERED: '1'
+                }
+            });
+        } else {
+            // Fallback to Python script
+            const pythonScript = path.join(__dirname, '..', 'backend', 'app.py');
+            console.log('Starting development backend from Python:', pythonScript);
+            pythonProcess = spawn('python', [pythonScript], {
+                cwd: path.join(__dirname, '..'),
+                env: {
+                    ...process.env,
+                    PYTHONIOENCODING: 'utf-8',
+                    PYTHONUNBUFFERED: '1'
                 }
             });
         }
+    }
 
+    // Verify pythonProcess was created successfully
+    if (!pythonProcess) {
+        console.error('Failed to create Python process');
+        return;
+    }
+
+    // Create log file for backend output
+    const logDir = path.join(app.getPath('userData'), 'logs');
+    if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const logFile = path.join(logDir, `backend-${timestamp}.log`);
+    const logStream = fs.createWriteStream(logFile, { flags: 'a' });
+
+    console.log('Backend logs will be saved to:', logFile);
+
+    pythonProcess.stdout.on('data', (data) => {
+        const output = `[STDOUT] ${data}`;
+        console.log(output);
+        logStream.write(output);
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+        const output = `[STDERR] ${data}`;
+        console.error(output);
+        logStream.write(output);
+    });
+
+    pythonProcess.on('error', (error) => {
+        const errorMsg = `[ERROR] Failed to start backend: ${error.message}\n`;
+        console.error(errorMsg);
+        logStream.write(errorMsg);
+        dialog.showErrorBox('Backend Error', `Failed to start backend: ${error.message}\n\nLog file: ${logFile}`);
+    });
+
+    pythonProcess.on('exit', (code, signal) => {
+        const exitMsg = `[EXIT] Backend process exited with code ${code}, signal ${signal}\n`;
+        console.log(exitMsg);
+        logStream.write(exitMsg);
+        logStream.end();
+
+        const runtimeSeconds = (Date.now() - backendStartTime) / 1000;
+
+        // Auto-restart if encoding error occurs during startup (first 5 seconds)
+        // Exit code 3221225477 = 0xC0000005 = ACCESS_VIOLATION (memory crash, not encoding)
+        const isAccessViolation = code === 3221225477;
+        const isStartupCrash = runtimeSeconds < 5;
+
+        if (isAccessViolation && isStartupCrash && backendRestartCount < 3) {
+            backendRestartCount++;
+            console.log(`ACCESS VIOLATION detected (${runtimeSeconds.toFixed(1)}s) - Restarting backend (attempt ${backendRestartCount}/3)...`);
+
+            // Wait 1 second before restarting
+            setTimeout(() => {
+                console.log('Restarting backend after crash...');
+                startPythonBackend();
+            }, 1000);
+        } else if (code !== 0 && code !== null) {
+            console.error(`Backend exited unexpectedly (${runtimeSeconds.toFixed(1)}s runtime)`);
+
+            // Try to read last 50 lines of log file
+            let logPreview = '';
+            try {
+                const logContent = fs.readFileSync(logFile, 'utf8');
+                const lines = logContent.split('\n');
+                const lastLines = lines.slice(-50).join('\n');
+                logPreview = lastLines.substring(0, 1000); // Limit to 1000 chars
+            } catch (e) {
+                logPreview = '(Could not read log file)';
+            }
+
+            // Decode exit code
+            let exitCodeInfo = '';
+            if (code === 3221225477) {
+                exitCodeInfo = '0xC0000005 (ACCESS_VIOLATION)\nThis is a memory crash, likely from:\n' +
+                    '- Missing DLL dependencies\n' +
+                    '- MySQL connector C extension issues\n' +
+                    '- Missing Visual C++ Redistributables\n\n';
+            }
+
+            if (backendStartupComplete) {
+                dialog.showErrorBox(
+                    'Backend Crashed',
+                    `Backend process exited with code ${code}\n\n${exitCodeInfo}` +
+                    `Runtime: ${runtimeSeconds.toFixed(1)}s\n\n` +
+                    `Last log output:\n${logPreview}\n\n` +
+                    `Full log: ${logFile}`
+                );
+            } else {
+                dialog.showErrorBox(
+                    'Backend Startup Failed',
+                    `Backend failed to start (exit code ${code})\n\n${exitCodeInfo}` +
+                    `Runtime: ${runtimeSeconds.toFixed(1)}s\n\n` +
+                    `Last log output:\n${logPreview}\n\n` +
+                    `Full log: ${logFile}\n\n` +
+                    `SOLUTIONS:\n` +
+                    `1. Install Visual C++ Redistributables\n` +
+                    `2. Check if MySQL is installed and accessible\n` +
+                    `3. Verify config.json is present\n` +
+                    `4. Check antivirus isn't blocking the app`
+                );
+            }
+        }
+    });
+
+    // Mark backend as started after 5 seconds
+    setTimeout(() => {
+        backendStartupComplete = true;
+        backendRestartCount = 0; // Reset restart counter on successful startup
+        const runtimeSeconds = (Date.now() - backendStartTime) / 1000;
+        console.log(`Backend startup complete (${runtimeSeconds.toFixed(1)}s)`);
+    }, 5000);
+}
+
+app.on('ready', () => {
+    startPythonBackend();
+    createWindow();
+});
+
+app.on('window-all-closed', function() {
+    if (pythonProcess) {
+        pythonProcess.kill();
+    }
+    if (process.platform !== 'darwin') {
+        app.quit();
+    }
+});
+
+app.on('activate', function() {
+    if (mainWindow === null) {
+        createWindow();
+    }
+});
+
+ipcMain.on('login-success', () => {
+    mainWindow.loadFile(path.join(__dirname, 'app.html'));
+});
+
+ipcMain.on('logout', () => {
+    mainWindow.loadFile(path.join(__dirname, 'login.html'));
+});
+
+/**
+ * WhatsApp sharing handler with automated file attachment
+ * Opens WhatsApp Desktop with specific contact and automates file attachment
+ */
+
+
+
+ipcMain.on('share-whatsapp', async (event, data) => {
+    const { shell } = require('electron');
+    const { exec } = require('child_process');
+    const os = require('os');
+
+    const { filePath, phoneNumber } = data;
+
+    console.log("\n================================================");
+    console.log("📱 WHATSAPP SHARE");
+    console.log("Phone:", phoneNumber);
+    console.log("File:", filePath);
+    console.log("================================================");
+
+    try {
+        if (process.platform === 'win32') {
+
+            // FIX: correct Windows path
+            const fixedPath = filePath.replace(/\//g, '\\');
+
+            // Create PowerShell script
+            const psScriptPath = path.join(os.tmpdir(), 'whatsapp-share.ps1');
+
+            const psScript = `
+# WhatsApp Auto-Attach Script
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName Microsoft.VisualBasic
+Add-Type -AssemblyName UIAutomationClient
+
+
+Write-Host "Opening WhatsApp..."
+Start-Process "whatsapp://send?phone=${phoneNumber}"
+Start-Sleep -Seconds 4
+
+# Detect WhatsApp window
+$attempts = 0
+$proc = $null
+while ($attempts -lt 10 -and $proc -eq $null) {
+    $proc = Get-Process | Where-Object { $_.MainWindowTitle -like "*WhatsApp*" } | Select-Object -First 1
+    if ($proc -eq $null) {
+        Start-Sleep -Seconds 1
+        $attempts++
+    }
+}
+
+if ($proc -eq $null) {
+    Write-Host "WhatsApp not found"
+    exit
+}
+
+Write-Host "Activating WhatsApp..."
+[Microsoft.VisualBasic.Interaction]::AppActivate($proc.Id)
+Start-Sleep -Milliseconds 1000
+
+# Focus the message input field
+$automation = New-Object -ComObject UIAutomationClient.CUIAutomation
+$root = $automation.GetRootElement()
+
+$waWin = $root.FindFirst(
+    0x1,
+    $automation.CreatePropertyCondition(30005, "WhatsApp")
+)
+
+if ($waWin -ne $null) {
+    $edit = $waWin.FindFirst(
+        0x4,
+        $automation.CreatePropertyCondition(30003, 50004) # Edit box
+    )
+    if ($edit -ne $null) {
+        $edit.SetFocus()
+        Send-Keys "{TAB}"
+Start-Sleep -Milliseconds 200
+        // Start-Sleep -Milliseconds 300
+    }
+}
+
+Write-Host "Preparing file to clipboard..."
+$file = "${fixedPath}"
+
+$data = New-Object System.Windows.Forms.DataObject
+$list = New-Object System.Collections.Specialized.StringCollection
+$list.Add($file)
+$data.SetFileDropList($list)
+[System.Windows.Forms.Clipboard]::SetDataObject($data, $true)
+
+Start-Sleep -Milliseconds 500
+
+Write-Host "Pasting file..."
+[System.Windows.Forms.SendKeys]::SendWait("^v")
+
+Start-Sleep -Seconds 2
+Write-Host "DONE - File attached successfully!"
+`;
+
+            // Write script to temp file
+            fs.writeFileSync(psScriptPath, psScript);
+
+            console.log("Running PowerShell automation...");
+
+            exec(`powershell.exe -ExecutionPolicy Bypass -File "${psScriptPath}"`, 
+                (error, stdout, stderr) => {
+
+                try { fs.unlinkSync(psScriptPath); } catch {}
+
+                if (error) {
+                    console.error("PowerShell error:", error);
+                    exec(`start "" "whatsapp://send?phone=${phoneNumber}"`);
+                    setTimeout(() => shell.showItemInFolder(filePath), 2000);
+                } else {
+                    console.log(stdout);
+                    console.log("WhatsApp automation complete.");
+                }
+            });
+
+        } else {
+            // Mac/Linux fallback
+            shell.openExternal(`whatsapp://send?phone=${phoneNumber}`);
+            setTimeout(() => shell.showItemInFolder(filePath), 2500);
+        }
+
+    } catch (error) {
+        console.error("WhatsApp Share Error:", error);
+        dialog.showErrorBox("WhatsApp Share Error",
+            `Failed to share on WhatsApp:\n${error.message}`);
+    }
+});
+
+
+/**
+ * Print slip HTML directly (correct method)
+ * Loads the actual HTML from Flask and prints it using webContents.print()
+ * This is the proper way to print - NOT from PDF viewer
+ */
+ipcMain.on('print-slip-html', async (event, slipId) => {
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`🖨️  PRINTING SLIP HTML - ID: ${slipId}`);
+    console.log('='.repeat(60));
+
+    let printWindow = null;
+
+    try {
+        // Create hidden window to load the actual HTML slip
+        printWindow = new BrowserWindow({
+            width: 800,
+            height: 1100,
+            show: false, // Hidden window for printing
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true
+            }
+        });
+
+        console.log(`📄 Loading slip HTML from: http://localhost:5000/print/${slipId}`);
+
+        // Load the actual HTML from Flask server
         await printWindow.loadURL(`http://localhost:5000/print/${slipId}`);
+
+        // Wait for content to fully render
         await new Promise(resolve => setTimeout(resolve, 1500));
 
+        console.log('✅ HTML loaded successfully, initiating print...');
+
+        // Print the HTML directly using webContents.print()
         printWindow.webContents.print({
-            silent: false,
-            printBackground: true,
+            silent: false, // Show print dialog
+            printBackground: true, // Include background colors/images
             color: true,
             margins: {
                 marginType: 'none'
@@ -215,25 +614,29 @@ ipcMain.on('print-slip-html', async (event, slipId) => {
             copies: 1
         }, (success, failureReason) => {
             if (success) {
-                console.log('[PRINT] Print job sent successfully');
+                console.log('✅ Print job sent successfully');
             } else {
-                console.error('[PRINT] Print failed:', failureReason);
+                console.error('❌ Print failed:', failureReason);
             }
 
+            // Clean up the print window
             if (printWindow && !printWindow.isDestroyed()) {
                 printWindow.close();
                 printWindow = null;
-                console.log('[PRINT] Print window closed');
+                console.log('🧹 Print window closed');
             }
         });
 
     } catch (error) {
-        console.error('[PRINT] Error during HTML print:', error);
+        console.error('❌ Error during HTML print:', error);
 
+        // Clean up print window if it exists
         if (printWindow && !printWindow.isDestroyed()) {
             printWindow.close();
         }
 
+        // Show error to user
+        const { dialog } = require('electron');
         dialog.showErrorBox(
             'Print Error',
             `Failed to print slip:\n\n${error.message}\n\nPlease ensure the Flask server is running.`
@@ -241,14 +644,22 @@ ipcMain.on('print-slip-html', async (event, slipId) => {
     }
 });
 
+/**
+ * Print slip handler with PDF preview
+ * Generates PDF using printToPDF and displays in custom viewer
+ * User can print, download, or share on WhatsApp from the viewer
+ */
 ipcMain.on('print-slip', async (event, data) => {
+    const { dialog, shell } = require('electron');
     let printWindow = null;
 
+    // Handle both old format (just slipId) and new format (object with slipId)
     const slipId = typeof data === 'object' ? data.slipId : data;
     const mobileNumber = typeof data === 'object' ? data.mobileNumber : null;
     const billNo = typeof data === 'object' ? data.billNo : null;
 
     try {
+        // Create hidden window to load slip content
         printWindow = new BrowserWindow({
             width: 800,
             height: 1100,
@@ -259,9 +670,13 @@ ipcMain.on('print-slip', async (event, data) => {
             }
         });
 
+        // Load slip HTML from Flask server
         await printWindow.loadURL(`http://localhost:5000/print/${slipId}`);
+
+        // Wait for content to fully render
         await new Promise(resolve => setTimeout(resolve, 1500));
 
+        // Generate PDF using Electron's built-in printToPDF
         const pdfData = await printWindow.webContents.printToPDF({
             marginsType: 0,
             pageSize: 'A4',
@@ -270,11 +685,14 @@ ipcMain.on('print-slip', async (event, data) => {
             landscape: false
         });
 
+        // Close the temporary window
         printWindow.close();
         printWindow = null;
 
+        // Convert PDF to base64 for embedding
         const pdfBase64 = pdfData.toString('base64');
 
+        // Create PDF viewer window with toolbar
         const viewerWindow = new BrowserWindow({
             width: 900,
             height: 1200,
@@ -286,6 +704,7 @@ ipcMain.on('print-slip', async (event, data) => {
             title: `Purchase Slip ${slipId}`
         });
 
+        // Create HTML with embedded PDF viewer and WhatsApp button
         const viewerHTML = `
 <!DOCTYPE html>
 <html>
@@ -384,7 +803,9 @@ ipcMain.on('print-slip', async (event, data) => {
         const billNo = ${billNo ? `'${billNo}'` : 'null'};
 
         function printPDF() {
-            console.log('[PRINT] Print button clicked - sending IPC to print HTML');
+            // FIXED: Print the actual HTML slip using IPC
+            // DO NOT use window.print() - it doesn't work with PDF iframes
+            console.log('🖨️  Print button clicked - sending IPC to print HTML');
             ipcRenderer.send('print-slip-html', slipId);
         }
 
@@ -402,26 +823,34 @@ ipcMain.on('print-slip', async (event, data) => {
             }
 
             try {
+                // Create permanent WhatsApp share folder in user's Documents
                 const documentsPath = path.join(os.homedir(), 'Documents', 'PurchaseSlipWhatsApp');
                 if (!fs.existsSync(documentsPath)) {
                     fs.mkdirSync(documentsPath, { recursive: true });
                 }
 
+                // Save PDF to permanent folder with timestamp
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
                 const fileName = 'Purchase_Slip_' + (billNo || slipId) + '_' + timestamp + '.pdf';
                 const filePath = path.join(documentsPath, fileName);
 
+                // Convert base64 to buffer and save
                 const pdfBuffer = Buffer.from(pdfBase64, 'base64');
                 fs.writeFileSync(filePath, pdfBuffer);
 
+                // Clean mobile number and construct WhatsApp URL
                 const cleanMobile = mobileNumber.replace(/[^0-9]/g, '');
                 const whatsappNumber = cleanMobile.startsWith('91') ? cleanMobile : '91' + cleanMobile;
 
+                // Send IPC to main process to handle WhatsApp sharing with file
                 ipcRenderer.send('share-whatsapp', {
                     filePath: filePath,
                     phoneNumber: whatsappNumber,
                     billNo: billNo || slipId
                 });
+
+                // Show success message
+                // alert('📱 WhatsApp Automation Started\\n\\nOpening WhatsApp Desktop...\\nChat: +' + whatsappNumber + '\\nPDF: ' + fileName + '\\n\\nThe PDF will be automatically attached.\\nJust press Send in WhatsApp! 🚀');
 
             } catch (error) {
                 alert('Error preparing WhatsApp share:\\n\\n' + error.message + '\\n\\nPlease try again or contact support.');
@@ -429,11 +858,12 @@ ipcMain.on('print-slip', async (event, data) => {
             }
         }
 
+        // Add keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'p') {
                 e.preventDefault();
-                console.log('[PRINT] Ctrl+P pressed - triggering print');
-                printPDF();
+                console.log('⌨️  Ctrl+P pressed - triggering print');
+                printPDF(); // This now calls the IPC method, not window.print()
             }
         });
     </script>
@@ -441,111 +871,21 @@ ipcMain.on('print-slip', async (event, data) => {
 </html>
         `;
 
+        // Load the viewer with embedded PDF
         viewerWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(viewerHTML));
 
     } catch (error) {
-        console.error('[PRINT] Error generating PDF:', error);
+        console.error('Error generating PDF:', error);
 
+        // Clean up print window if it exists
         if (printWindow && !printWindow.isDestroyed()) {
             printWindow.close();
         }
 
+        // Show error dialog to user
         dialog.showErrorBox(
             'Print Error',
             `Failed to generate PDF:\n\n${error.message}\n\nPlease ensure the Flask server is running.`
         );
     }
-});
-
-ipcMain.on('share-whatsapp', async (event, data) => {
-    const { filePath, phoneNumber, billNo } = data;
-
-    try {
-        const whatsappUrl = `https://web.whatsapp.com/send?phone=${phoneNumber}`;
-        await shell.openExternal(whatsappUrl);
-
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
-        await shell.openPath(filePath);
-
-        console.log('[WHATSAPP] Opened WhatsApp and PDF file for manual attachment');
-
-    } catch (error) {
-        console.error('[WHATSAPP] Error:', error);
-        dialog.showErrorBox(
-            'WhatsApp Share Error',
-            `Failed to open WhatsApp:\n\n${error.message}\n\nThe PDF was saved to:\n${filePath}\n\nYou can manually share it.`
-        );
-    }
-});
-
-app.whenReady().then(async () => {
-    console.log('[APP] Application starting...');
-    console.log('[APP] isPackaged:', app.isPackaged);
-    console.log('[APP] resourcesPath:', process.resourcesPath);
-
-    createSplashWindow();
-
-    try {
-        await startBackend();
-        console.log('[APP] Backend started successfully');
-
-        setTimeout(() => {
-            createLoginWindow();
-        }, 1500);
-
-    } catch (error) {
-        console.error('[APP] Failed to start backend:', error);
-
-        if (splashWindow && !splashWindow.isDestroyed()) {
-            splashWindow.close();
-        }
-
-        const response = dialog.showMessageBoxSync({
-            type: 'error',
-            title: 'Backend Start Failed',
-            message: 'Failed to start the backend server',
-            detail: `Error: ${error.message}\n\nBackend path: ${BACKEND_EXE}\n\nThe application cannot continue.`,
-            buttons: ['Exit', 'Show Logs'],
-            defaultId: 0
-        });
-
-        if (response === 1) {
-            const logsPath = path.join(app.getPath('userData'), 'logs');
-            shell.openPath(logsPath);
-        }
-
-        app.quit();
-    }
-});
-
-app.on('window-all-closed', () => {
-    console.log('[APP] All windows closed');
-    stopBackend();
-    app.quit();
-});
-
-app.on('before-quit', () => {
-    console.log('[APP] Application quitting...');
-    stopBackend();
-});
-
-app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        createLoginWindow();
-    }
-});
-
-process.on('exit', () => {
-    stopBackend();
-});
-
-process.on('SIGINT', () => {
-    stopBackend();
-    process.exit();
-});
-
-process.on('SIGTERM', () => {
-    stopBackend();
-    process.exit();
 });

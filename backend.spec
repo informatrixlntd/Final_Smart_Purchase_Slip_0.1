@@ -25,11 +25,6 @@ datas = [
     # Application templates
     ('backend/templates', 'templates'),
 
-    # Frontend files for desktop app (CRITICAL - loaded in iframe)
-    ('frontend/index.html', 'frontend'),
-    ('frontend/reports.html', 'frontend'),
-    ('frontend/static', 'frontend/static'),
-
     # Configuration file - CRITICAL
     ('config.json', '.'),
 
