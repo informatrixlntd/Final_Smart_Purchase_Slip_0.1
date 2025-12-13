@@ -3,10 +3,16 @@
 """
 PyInstaller spec file for Smart Purchase Slip Backend
 Fixed version to prevent ACCESS_VIOLATION crashes and ensure all files are bundled
+
+CRITICAL FIX: Forces pure-Python MySQL connector to prevent C extension crashes
 """
 
 import os
+import sys
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+
+# Force pure-Python mode for MySQL connector (prevents ACCESS_VIOLATION crashes)
+os.environ['MYSQL_CONNECTOR_PYTHON_USE_PURE'] = '1'
 
 block_cipher = None
 
@@ -116,7 +122,7 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=['pyi_rth_mysql_pure.py'],
     excludes=[
         'tkinter',
         'matplotlib',
@@ -128,6 +134,10 @@ a = Analysis(
         'IPython',
         'notebook',
         'pytest',
+        # Exclude MySQL C extensions to force pure-Python mode
+        '_mysql_connector',
+        'mysql.connector.connection_cext',
+        'mysql.connector.cursor_cext',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

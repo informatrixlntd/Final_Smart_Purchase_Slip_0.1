@@ -333,29 +333,62 @@ function startPythonBackend() {
         const runtimeSeconds = (Date.now() - backendStartTime) / 1000;
 
         // Auto-restart if encoding error occurs during startup (first 5 seconds)
-        const isStartupEncodingError = code === 3221225477 && runtimeSeconds < 5;
+        // Exit code 3221225477 = 0xC0000005 = ACCESS_VIOLATION (memory crash, not encoding)
+        const isAccessViolation = code === 3221225477;
+        const isStartupCrash = runtimeSeconds < 5;
 
-        if (isStartupEncodingError && backendRestartCount < 3) {
+        if (isAccessViolation && isStartupCrash && backendRestartCount < 3) {
             backendRestartCount++;
-            console.log(`Encoding error detected (${runtimeSeconds.toFixed(1)}s) - Restarting backend (attempt ${backendRestartCount}/3)...`);
+            console.log(`ACCESS VIOLATION detected (${runtimeSeconds.toFixed(1)}s) - Restarting backend (attempt ${backendRestartCount}/3)...`);
 
             // Wait 1 second before restarting
             setTimeout(() => {
-                console.log('Restarting backend after encoding error...');
+                console.log('Restarting backend after crash...');
                 startPythonBackend();
             }, 1000);
         } else if (code !== 0 && code !== null) {
             console.error(`Backend exited unexpectedly (${runtimeSeconds.toFixed(1)}s runtime)`);
 
+            // Try to read last 50 lines of log file
+            let logPreview = '';
+            try {
+                const logContent = fs.readFileSync(logFile, 'utf8');
+                const lines = logContent.split('\n');
+                const lastLines = lines.slice(-50).join('\n');
+                logPreview = lastLines.substring(0, 1000); // Limit to 1000 chars
+            } catch (e) {
+                logPreview = '(Could not read log file)';
+            }
+
+            // Decode exit code
+            let exitCodeInfo = '';
+            if (code === 3221225477) {
+                exitCodeInfo = '0xC0000005 (ACCESS_VIOLATION)\nThis is a memory crash, likely from:\n' +
+                    '- Missing DLL dependencies\n' +
+                    '- MySQL connector C extension issues\n' +
+                    '- Missing Visual C++ Redistributables\n\n';
+            }
+
             if (backendStartupComplete) {
                 dialog.showErrorBox(
                     'Backend Crashed',
-                    `Backend process exited unexpectedly with code ${code}\n\nCheck log file:\n${logFile}`
+                    `Backend process exited with code ${code}\n\n${exitCodeInfo}` +
+                    `Runtime: ${runtimeSeconds.toFixed(1)}s\n\n` +
+                    `Last log output:\n${logPreview}\n\n` +
+                    `Full log: ${logFile}`
                 );
             } else {
                 dialog.showErrorBox(
-                    'Backend Startup Error',
-                    `Backend failed to start (exit code ${code})\n\nCheck log file:\n${logFile}`
+                    'Backend Startup Failed',
+                    `Backend failed to start (exit code ${code})\n\n${exitCodeInfo}` +
+                    `Runtime: ${runtimeSeconds.toFixed(1)}s\n\n` +
+                    `Last log output:\n${logPreview}\n\n` +
+                    `Full log: ${logFile}\n\n` +
+                    `SOLUTIONS:\n` +
+                    `1. Install Visual C++ Redistributables\n` +
+                    `2. Check if MySQL is installed and accessible\n` +
+                    `3. Verify config.json is present\n` +
+                    `4. Check antivirus isn't blocking the app`
                 );
             }
         }

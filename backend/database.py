@@ -1,8 +1,16 @@
-import mysql.connector
-from mysql.connector.pooling import MySQLConnectionPool
 import os
 import sys
 import json
+
+# CRITICAL: Force pure-Python MySQL connector to prevent ACCESS_VIOLATION crashes
+os.environ['MYSQL_CONNECTOR_PYTHON_USE_PURE'] = '1'
+
+import mysql.connector
+from mysql.connector.pooling import MySQLConnectionPool
+
+# Verify pure-Python mode is enabled
+print(f"[INFO] MySQL Connector version: {mysql.connector.__version__}")
+print(f"[INFO] MySQL Connector pure mode: {os.environ.get('MYSQL_CONNECTOR_PYTHON_USE_PURE', 'not set')}")
 
 # Load MySQL configuration from config file or environment
 def load_db_config():
@@ -72,13 +80,17 @@ def init_connection_pool():
     """
     global connection_pool
     try:
+        # Force pure-Python implementation (prevents ACCESS_VIOLATION crashes)
+        pool_config = DB_CONFIG.copy()
+        pool_config['use_pure'] = True  # CRITICAL: Force pure-Python mode
+
         connection_pool = MySQLConnectionPool(
             pool_name="purchase_pool",
             pool_size=10,
             pool_reset_session=True,
-            **DB_CONFIG
+            **pool_config
         )
-        print("[OK] MySQL connection pool created successfully (size: 10)")
+        print("[OK] MySQL connection pool created successfully (size: 10, pure-Python mode)")
     except mysql.connector.Error as err:
         if err.errno == 1049:
             print("Database doesn't exist. Creating database...")
@@ -87,7 +99,7 @@ def init_connection_pool():
                 pool_name="purchase_pool",
                 pool_size=10,
                 pool_reset_session=True,
-                **DB_CONFIG
+                **pool_config
             )
         else:
             print(f"[ERROR] Error creating connection pool: {err}")
@@ -100,6 +112,7 @@ def create_database():
     try:
         temp_config = DB_CONFIG.copy()
         database_name = temp_config.pop('database')
+        temp_config['use_pure'] = True  # Force pure-Python mode
 
         conn = mysql.connector.connect(**temp_config)
         cursor = conn.cursor()
