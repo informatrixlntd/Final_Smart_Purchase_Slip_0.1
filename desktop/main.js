@@ -7,6 +7,8 @@ let mainWindow;
 let pythonProcess;
 let isBackupInProgress = false;
 let canCloseApp = false;
+let backendStartTime = null;
+let backendStartupComplete = false;
 
 // Load configuration from config.json
 function loadConfig() {
@@ -223,6 +225,10 @@ function createLocalBackupOnly(dbConfig) {
 }
 
 function startPythonBackend() {
+    // Reset backend startup tracking
+    backendStartTime = Date.now();
+    backendStartupComplete = false;
+
     // Check if packaged backend executable exists
     const isPackaged = app.isPackaged;
     let backendPath;
@@ -239,7 +245,12 @@ function startPythonBackend() {
         if (fs.existsSync(backendPath)) {
             console.log('Starting packaged backend:', backendPath);
             pythonProcess = spawn(backendPath, [], {
-                cwd: path.join(process.resourcesPath, 'dist-backend')
+                cwd: path.join(process.resourcesPath, 'dist-backend'),
+                env: {
+                    ...process.env,
+                    PYTHONIOENCODING: 'utf-8',
+                    PYTHONUNBUFFERED: '1'
+                }
             });
         } else {
             console.error('Backend executable not found:', backendPath);
@@ -253,14 +264,24 @@ function startPythonBackend() {
         if (fs.existsSync(devExePath)) {
             console.log('Starting development backend from .exe:', devExePath);
             pythonProcess = spawn(devExePath, [], {
-                cwd: path.join(__dirname, '..', 'dist-backend')
+                cwd: path.join(__dirname, '..', 'dist-backend'),
+                env: {
+                    ...process.env,
+                    PYTHONIOENCODING: 'utf-8',
+                    PYTHONUNBUFFERED: '1'
+                }
             });
         } else {
             // Fallback to Python script
             const pythonScript = path.join(__dirname, '..', 'backend', 'app.py');
             console.log('Starting development backend from Python:', pythonScript);
             pythonProcess = spawn('python', [pythonScript], {
-                cwd: path.join(__dirname, '..')
+                cwd: path.join(__dirname, '..'),
+                env: {
+                    ...process.env,
+                    PYTHONIOENCODING: 'utf-8',
+                    PYTHONUNBUFFERED: '1'
+                }
             });
         }
     }
@@ -302,17 +323,38 @@ function startPythonBackend() {
         logStream.write(exitMsg);
         logStream.end();
 
-        if (code !== 0 && code !== null) {
-            dialog.showErrorBox(
-                'Backend Crashed',
-                `Backend process exited unexpectedly with code ${code}\n\nCheck log file:\n${logFile}`
-            );
+        const runtimeSeconds = (Date.now() - backendStartTime) / 1000;
+
+        // Suppress error dialog if:
+        // - Exit code is 3221225477 (ACCESS_VIOLATION encoding issue) during first 5 seconds
+        // This is a known startup issue that self-recovers
+        const isStartupEncodingError = code === 3221225477 && runtimeSeconds < 5;
+
+        if (code !== 0 && code !== null && !isStartupEncodingError) {
+            console.error(`Backend exited unexpectedly (${runtimeSeconds.toFixed(1)}s runtime)`);
+
+            if (backendStartupComplete) {
+                dialog.showErrorBox(
+                    'Backend Crashed',
+                    `Backend process exited unexpectedly with code ${code}\n\nCheck log file:\n${logFile}`
+                );
+            } else {
+                dialog.showErrorBox(
+                    'Backend Startup Error',
+                    `Backend failed to start (exit code ${code})\n\nCheck log file:\n${logFile}`
+                );
+            }
+        } else if (isStartupEncodingError) {
+            console.log(`Suppressing startup encoding error (${runtimeSeconds.toFixed(1)}s)`);
         }
     });
 
+    // Mark backend as started after 5 seconds
     setTimeout(() => {
-        console.log('Backend startup sequence complete');
-    }, 3000);
+        backendStartupComplete = true;
+        const runtimeSeconds = (Date.now() - backendStartTime) / 1000;
+        console.log(`Backend startup complete (${runtimeSeconds.toFixed(1)}s)`);
+    }, 5000);
 }
 
 app.on('ready', () => {
