@@ -9,6 +9,7 @@ let isBackupInProgress = false;
 let canCloseApp = false;
 let backendStartTime = null;
 let backendStartupComplete = false;
+let backendRestartCount = 0;
 
 // Load configuration from config.json
 function loadConfig() {
@@ -245,7 +246,12 @@ function startPythonBackend() {
         if (fs.existsSync(backendPath)) {
             console.log('Starting packaged backend:', backendPath);
             pythonProcess = spawn(backendPath, [], {
-                cwd: path.join(process.resourcesPath, 'dist-backend')
+                cwd: path.join(process.resourcesPath, 'dist-backend'),
+                env: {
+                    ...process.env,
+                    PYTHONIOENCODING: 'utf-8',
+                    PYTHONUNBUFFERED: '1'
+                }
             });
         } else {
             console.error('Backend executable not found:', backendPath);
@@ -259,14 +265,24 @@ function startPythonBackend() {
         if (fs.existsSync(devExePath)) {
             console.log('Starting development backend from .exe:', devExePath);
             pythonProcess = spawn(devExePath, [], {
-                cwd: path.join(__dirname, '..', 'dist-backend')
+                cwd: path.join(__dirname, '..', 'dist-backend'),
+                env: {
+                    ...process.env,
+                    PYTHONIOENCODING: 'utf-8',
+                    PYTHONUNBUFFERED: '1'
+                }
             });
         } else {
             // Fallback to Python script
             const pythonScript = path.join(__dirname, '..', 'backend', 'app.py');
             console.log('Starting development backend from Python:', pythonScript);
             pythonProcess = spawn('python', [pythonScript], {
-                cwd: path.join(__dirname, '..')
+                cwd: path.join(__dirname, '..'),
+                env: {
+                    ...process.env,
+                    PYTHONIOENCODING: 'utf-8',
+                    PYTHONUNBUFFERED: '1'
+                }
             });
         }
     }
@@ -316,12 +332,19 @@ function startPythonBackend() {
 
         const runtimeSeconds = (Date.now() - backendStartTime) / 1000;
 
-        // Suppress error dialog if:
-        // - Exit code is 3221225477 (ACCESS_VIOLATION encoding issue) during first 5 seconds
-        // This is a known startup issue that self-recovers
+        // Auto-restart if encoding error occurs during startup (first 5 seconds)
         const isStartupEncodingError = code === 3221225477 && runtimeSeconds < 5;
 
-        if (code !== 0 && code !== null && !isStartupEncodingError) {
+        if (isStartupEncodingError && backendRestartCount < 3) {
+            backendRestartCount++;
+            console.log(`Encoding error detected (${runtimeSeconds.toFixed(1)}s) - Restarting backend (attempt ${backendRestartCount}/3)...`);
+
+            // Wait 1 second before restarting
+            setTimeout(() => {
+                console.log('Restarting backend after encoding error...');
+                startPythonBackend();
+            }, 1000);
+        } else if (code !== 0 && code !== null) {
             console.error(`Backend exited unexpectedly (${runtimeSeconds.toFixed(1)}s runtime)`);
 
             if (backendStartupComplete) {
@@ -335,14 +358,13 @@ function startPythonBackend() {
                     `Backend failed to start (exit code ${code})\n\nCheck log file:\n${logFile}`
                 );
             }
-        } else if (isStartupEncodingError) {
-            console.log(`Suppressing startup encoding error (${runtimeSeconds.toFixed(1)}s)`);
         }
     });
 
     // Mark backend as started after 5 seconds
     setTimeout(() => {
         backendStartupComplete = true;
+        backendRestartCount = 0; // Reset restart counter on successful startup
         const runtimeSeconds = (Date.now() - backendStartTime) / 1000;
         console.log(`Backend startup complete (${runtimeSeconds.toFixed(1)}s)`);
     }, 5000);
