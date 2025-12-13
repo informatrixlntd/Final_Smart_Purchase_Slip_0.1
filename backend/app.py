@@ -60,7 +60,7 @@ if getattr(sys, 'frozen', False):
 else:
     # Running in normal Python environment
     template_folder = 'templates'
-    static_folder = '../frontend/static'
+    static_folder = '../desktop/static'
 
 print("[INFO] Creating Flask app...")
 app = Flask(__name__,
@@ -89,12 +89,12 @@ except Exception as e:
 @app.route('/')
 def index():
     """Serve the main form page"""
-    return send_from_directory('../frontend', 'index.html')
+    return send_from_directory('../desktop', 'index.html')
 
 @app.route('/reports')
 def reports():
     """Serve the reports page"""
-    return send_from_directory('../frontend', 'reports.html')
+    return send_from_directory('../desktop', 'reports.html')
 
 @app.route('/api/next-bill-no')
 def next_bill_no_route():
