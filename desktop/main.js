@@ -245,12 +245,7 @@ function startPythonBackend() {
         if (fs.existsSync(backendPath)) {
             console.log('Starting packaged backend:', backendPath);
             pythonProcess = spawn(backendPath, [], {
-                cwd: path.join(process.resourcesPath, 'dist-backend'),
-                env: {
-                    ...process.env,
-                    PYTHONIOENCODING: 'utf-8',
-                    PYTHONUNBUFFERED: '1'
-                }
+                cwd: path.join(process.resourcesPath, 'dist-backend')
             });
         } else {
             console.error('Backend executable not found:', backendPath);
@@ -264,26 +259,22 @@ function startPythonBackend() {
         if (fs.existsSync(devExePath)) {
             console.log('Starting development backend from .exe:', devExePath);
             pythonProcess = spawn(devExePath, [], {
-                cwd: path.join(__dirname, '..', 'dist-backend'),
-                env: {
-                    ...process.env,
-                    PYTHONIOENCODING: 'utf-8',
-                    PYTHONUNBUFFERED: '1'
-                }
+                cwd: path.join(__dirname, '..', 'dist-backend')
             });
         } else {
             // Fallback to Python script
             const pythonScript = path.join(__dirname, '..', 'backend', 'app.py');
             console.log('Starting development backend from Python:', pythonScript);
             pythonProcess = spawn('python', [pythonScript], {
-                cwd: path.join(__dirname, '..'),
-                env: {
-                    ...process.env,
-                    PYTHONIOENCODING: 'utf-8',
-                    PYTHONUNBUFFERED: '1'
-                }
+                cwd: path.join(__dirname, '..')
             });
         }
+    }
+
+    // Verify pythonProcess was created successfully
+    if (!pythonProcess) {
+        console.error('Failed to create Python process');
+        return;
     }
 
     // Create log file for backend output
