@@ -13,30 +13,48 @@ def load_db_config():
     if getattr(sys, 'frozen', False):
         # Running as compiled executable
         bundle_dir = sys._MEIPASS
-        # Config should be in parent directory of dist-backend
-        config_paths.append(os.path.join(os.path.dirname(sys.executable), '..', 'config.json'))
+        exe_dir = os.path.dirname(sys.executable)
+
+        # Try these locations in order:
+        # 1. In resources folder (Electron packaged app)
+        config_paths.append(os.path.join(exe_dir, '..', '..', 'resources', 'config.json'))
+        # 2. Next to dist-backend folder
+        config_paths.append(os.path.join(exe_dir, '..', 'config.json'))
+        # 3. In bundle directory
         config_paths.append(os.path.join(bundle_dir, 'config.json'))
+        # 4. Same directory as executable
+        config_paths.append(os.path.join(exe_dir, 'config.json'))
+
+        print(f"[INFO] Running as packaged exe from: {exe_dir}")
+        print(f"[INFO] Bundle dir (_MEIPASS): {bundle_dir}")
     else:
         # Running in normal Python environment
         config_paths.append(os.path.join(os.path.dirname(__file__), '..', 'config.json'))
+        print(f"[INFO] Running in development mode from: {os.path.dirname(__file__)}")
 
     # Try each path
     for config_file in config_paths:
-        if os.path.exists(config_file):
+        normalized_path = os.path.normpath(os.path.abspath(config_file))
+        print(f"[INFO] Trying config path: {normalized_path}")
+
+        if os.path.exists(normalized_path):
             try:
-                with open(config_file, 'r') as f:
+                with open(normalized_path, 'r') as f:
                     config = json.load(f)
-                    print(f"[OK] Loaded config from: {config_file}")
-                    return config.get('database', {})
+                    db_config = config.get('database', {})
+                    print(f"[OK] Loaded config from: {normalized_path}")
+                    print(f"[INFO] MySQL connection: {db_config.get('user')}@{db_config.get('host')}:{db_config.get('port')}/{db_config.get('database')}")
+                    return db_config
             except Exception as e:
-                print(f"[WARNING] Error reading config from {config_file}: {e}")
+                print(f"[WARNING] Error reading config from {normalized_path}: {e}")
                 continue
 
     # Fallback to defaults
-    print("[WARNING] No config.json found, using default configuration")
+    print("[WARNING] No config.json found in any location, using default configuration")
+    print(f"[WARNING] Searched paths: {config_paths}")
     return {
         'host': 'localhost',
-        'port': 3306,
+        'port': 1396,
         'user': 'root',
         'password': 'root',
         'database': 'purchase_slips_db'
