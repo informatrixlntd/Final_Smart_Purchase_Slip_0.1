@@ -2,42 +2,48 @@
 
 """
 PyInstaller spec file for Smart Purchase Slip Backend
-Fixed version to prevent ACCESS_VIOLATION crashes (exit code 3221225477)
+Fixed version to prevent ACCESS_VIOLATION crashes and ensure all files are bundled
 """
 
-import sys
-from PyInstaller.utils.hooks import collect_all, collect_submodules
+import os
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
-# Collect all Flask dependencies
-flask_datas, flask_binaries, flask_hiddenimports = collect_all('flask')
-jinja2_datas, jinja2_binaries, jinja2_hiddenimports = collect_all('jinja2')
-mysql_datas, mysql_binaries, mysql_hiddenimports = collect_all('mysql')
+# Collect data files for Flask/Jinja2
+flask_datas = collect_data_files('flask')
+jinja2_datas = collect_data_files('jinja2')
 
-# Combine all collected data
-all_datas = flask_datas + jinja2_datas + mysql_datas
-all_binaries = flask_binaries + jinja2_binaries + mysql_binaries
-all_hiddenimports = flask_hiddenimports + jinja2_hiddenimports + mysql_hiddenimports
-
-# Add application-specific data files
-all_datas += [
+# Build the datas list explicitly
+datas = [
+    # Application templates
     ('backend/templates', 'templates'),
-    ('config.json', '.'),
-]
 
-# Add all backend Python files
-all_datas += [
+    # Configuration file - CRITICAL
+    ('config.json', '.'),
+
+    # Backend Python modules as data files
+    ('backend/__init__.py', '.'),
     ('backend/database.py', '.'),
+    ('backend/app.py', '.'),
     ('backend/routes/__init__.py', 'routes'),
     ('backend/routes/slips.py', 'routes'),
     ('backend/routes/auth.py', 'routes'),
 ]
 
-# Ensure all critical imports are included
-all_hiddenimports += [
+# Add Flask and Jinja2 data files
+datas.extend(flask_datas)
+datas.extend(jinja2_datas)
+
+# Collect all MySQL connector submodules
+mysql_hiddenimports = collect_submodules('mysql.connector')
+
+# Build comprehensive hidden imports list
+hiddenimports = [
     # Flask ecosystem
     'flask',
+    'flask.json',
+    'flask.json.provider',
     'flask_cors',
     'jinja2',
     'jinja2.ext',
@@ -47,25 +53,16 @@ all_hiddenimports += [
     'werkzeug.serving',
     'werkzeug.middleware',
     'werkzeug.middleware.proxy_fix',
+    'werkzeug.datastructures',
+    'werkzeug.http',
+    'werkzeug.urls',
+    'werkzeug.useragents',
+    'werkzeug.utils',
+    'werkzeug.wrappers',
+    'werkzeug.exceptions',
     'click',
     'markupsafe',
     'itsdangerous',
-
-    # MySQL connector
-    'mysql.connector',
-    'mysql.connector.pooling',
-    'mysql.connector.cursor',
-    'mysql.connector.cursor_cext',
-    'mysql.connector.connection',
-    'mysql.connector.connection_cext',
-    'mysql.connector.errors',
-    'mysql.connector.constants',
-    'mysql.connector.conversion',
-    'mysql.connector.protocol',
-    'mysql.connector.abstracts',
-    'mysql.connector.charsets',
-    'mysql.connector.locales',
-    'mysql.connector.utils',
 
     # Standard library
     'pytz',
@@ -74,23 +71,49 @@ all_hiddenimports += [
     'json',
     'logging',
     'sqlite3',
+    'email',
+    'email.mime',
+    'email.mime.text',
+    'email.mime.multipart',
 
     # Application modules
-    'database',
-    'routes',
-    'routes.slips',
-    'routes.auth',
+    'backend',
+    'backend.database',
+    'backend.routes',
+    'backend.routes.slips',
+    'backend.routes.auth',
 ]
 
+# Add all MySQL connector imports
+hiddenimports.extend(mysql_hiddenimports)
+
+# Add specific MySQL connector modules that might be missed
+hiddenimports.extend([
+    'mysql.connector',
+    'mysql.connector.pooling',
+    'mysql.connector.cursor',
+    'mysql.connector.connection',
+    'mysql.connector.errors',
+    'mysql.connector.constants',
+    'mysql.connector.conversion',
+    'mysql.connector.protocol',
+    'mysql.connector.abstracts',
+    'mysql.connector.charsets',
+    'mysql.connector.locales',
+    'mysql.connector.locales.eng',
+    'mysql.connector.locales.eng.client_error',
+    'mysql.connector.utils',
+])
+
 # Remove duplicates
-all_hiddenimports = list(set(all_hiddenimports))
+hiddenimports = list(set(hiddenimports))
 
 a = Analysis(
     ['backend/app.py'],
-    pathex=['backend', '.'],
-    binaries=all_binaries,
-    datas=all_datas,
-    hiddenimports=all_hiddenimports,
+    pathex=['.', 'backend'],
+    binaries=[],
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -102,6 +125,9 @@ a = Analysis(
         'scipy',
         'PyQt5',
         'PySide2',
+        'IPython',
+        'notebook',
+        'pytest',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -120,8 +146,8 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=False,  # CRITICAL: UPX disabled to prevent ACCESS_VIOLATION crashes
-    console=True,  # Keep console for debugging
+    upx=False,  # CRITICAL: Disabled to prevent ACCESS_VIOLATION
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -135,7 +161,7 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=False,  # CRITICAL: UPX disabled
+    upx=False,  # CRITICAL: Disabled
     upx_exclude=[],
     name='dist-backend'
 )

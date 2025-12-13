@@ -1,7 +1,6 @@
 @echo off
 chcp 65001 >nul 2>&1
 color 0A
-setlocal enabledelayedexpansion
 
 echo ============================================================
 echo  SMART PURCHASE SLIP - BUILD SYSTEM
@@ -152,14 +151,13 @@ if not exist "dist-backend\purchase_slips_backend.exe" (
 echo [OK] Backend executable found
 
 REM Check file size
-for %%A in ("dist-backend\purchase_slips_backend.exe") do (
-    set "size=%%~zA"
-    set /a sizeMB=!size! / 1048576
-)
+set backendSize=0
+for %%A in ("dist-backend\purchase_slips_backend.exe") do set backendSize=%%~zA
+set /a sizeMB=%backendSize% / 1048576
 
-echo Backend size: !sizeMB! MB
+echo Backend size: %sizeMB% MB
 
-if !sizeMB! LSS 10 (
+if %sizeMB% LSS 10 (
     echo [WARNING] Backend executable seems small for Flask app
     echo This might indicate missing dependencies
     echo Recommended size: 15-30 MB
@@ -189,21 +187,20 @@ REM Step 6: Electron Dependencies
 REM ============================================================
 echo [6/8] Checking Electron dependencies...
 
-cd desktop
+pushd desktop
 
 if not exist "node_modules" (
-    echo Installing Node packages (this may take 3-5 minutes)...
+    echo Installing Node packages - this may take 3-5 minutes...
     call npm install
     if errorlevel 1 (
         echo [ERROR] npm install failed!
-        cd ..
+        popd
         pause
         exit /b 1
     )
     echo [OK] Node packages installed
 ) else (
     echo [OK] Node modules already installed
-    echo Run 'npm install' in desktop folder if you need to update
 )
 
 echo.
@@ -222,12 +219,12 @@ if errorlevel 1 (
     echo.
     echo [ERROR] Electron build failed!
     echo Check the npm output above for details
-    cd ..
+    popd
     pause
     exit /b 1
 )
 
-cd ..
+popd
 
 echo.
 echo [OK] Electron build completed
@@ -243,18 +240,18 @@ echo  BUILD VERIFICATION REPORT
 echo ============================================================
 echo.
 
-set "BUILD_OK=1"
+set BUILD_OK=1
 
 REM Check Electron executable
 if exist "desktop\dist\win-unpacked\Smart Purchase Slip.exe" (
     echo [OK] Electron App: desktop\dist\win-unpacked\Smart Purchase Slip.exe
     for %%F in ("desktop\dist\win-unpacked\Smart Purchase Slip.exe") do (
         set /a appSizeMB=%%~zF / 1048576
-        echo     Size: !appSizeMB! MB
     )
+    echo     Size: %appSizeMB% MB
 ) else (
     echo [ERROR] Electron executable not found
-    set "BUILD_OK=0"
+    set BUILD_OK=0
 )
 
 REM Check bundled backend
@@ -262,7 +259,7 @@ if exist "desktop\dist\win-unpacked\resources\dist-backend\purchase_slips_backen
     echo [OK] Backend bundled in resources
 ) else (
     echo [ERROR] Backend not bundled in Electron resources
-    set "BUILD_OK=0"
+    set BUILD_OK=0
 )
 
 REM Check config
@@ -270,23 +267,29 @@ if exist "desktop\dist\win-unpacked\resources\config.json" (
     echo [OK] config.json bundled
 ) else (
     echo [ERROR] config.json not bundled
-    set "BUILD_OK=0"
+    set BUILD_OK=0
 )
 
 REM Check installer
 echo.
+set INSTALLER_FOUND=0
 for %%F in ("desktop\dist\Smart Purchase Slip Setup *.exe") do (
     if exist "%%F" (
         echo [OK] Installer: %%~nxF
         set /a instSizeMB=%%~zF / 1048576
-        echo     Size: !instSizeMB! MB
+        echo     Size: %instSizeMB% MB
+        set INSTALLER_FOUND=1
     )
+)
+
+if %INSTALLER_FOUND%==0 (
+    echo [WARNING] Installer not found in desktop\dist\
 )
 
 echo.
 echo ============================================================
 
-if "%BUILD_OK%"=="1" (
+if %BUILD_OK%==1 (
     echo  BUILD SUCCESS!
     echo ============================================================
     echo.
@@ -294,11 +297,11 @@ if "%BUILD_OK%"=="1" (
     echo.
     echo TESTING OPTIONS:
     echo.
-    echo 1. Quick Test (No installation required):
+    echo 1. Quick Test - No installation required:
     echo    desktop\dist\win-unpacked\Smart Purchase Slip.exe
     echo.
     echo 2. Install and Test:
-    echo    desktop\dist\Smart Purchase Slip Setup *.exe
+    echo    Check desktop\dist\ for the installer exe
     echo.
     echo 3. Check logs if issues occur:
     echo    %%APPDATA%%\smart-purchase-slip\logs\
