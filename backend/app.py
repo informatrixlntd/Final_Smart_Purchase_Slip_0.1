@@ -70,6 +70,20 @@ app = Flask(__name__,
 print("[INFO] Enabling CORS...")
 CORS(app)
 
+# Setup frontend folder path (for serving HTML pages in desktop app)
+if getattr(sys, 'frozen', False):
+    # Running as compiled executable - frontend files are bundled
+    FRONTEND_FOLDER = os.path.join(sys._MEIPASS, 'frontend')
+    print(f"[INFO] Frontend folder (packaged): {FRONTEND_FOLDER}")
+else:
+    # Running in normal Python environment
+    FRONTEND_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'frontend')
+    print(f"[INFO] Frontend folder (dev): {FRONTEND_FOLDER}")
+
+print(f"[INFO] Frontend folder exists: {os.path.exists(FRONTEND_FOLDER)}")
+if os.path.exists(FRONTEND_FOLDER):
+    print(f"[INFO] Frontend contents: {os.listdir(FRONTEND_FOLDER)}")
+
 print("[INFO] Registering blueprints...")
 app.register_blueprint(slips_bp)
 app.register_blueprint(auth_bp)
@@ -88,18 +102,54 @@ except Exception as e:
 
 @app.route('/')
 def index():
-    """Serve the main form page"""
-    return send_from_directory('../frontend', 'index.html')
+    """Serve the main form page (Create New Slip UI)"""
+    try:
+        return send_from_directory(FRONTEND_FOLDER, 'index.html')
+    except Exception as e:
+        print(f"[ERROR] Failed to serve index.html: {e}")
+        return jsonify({
+            'error': 'index.html not found',
+            'frontend_folder': FRONTEND_FOLDER,
+            'exists': os.path.exists(FRONTEND_FOLDER),
+            'files': os.listdir(FRONTEND_FOLDER) if os.path.exists(FRONTEND_FOLDER) else []
+        }), 404
 
 @app.route('/reports')
 def reports():
     """Serve the reports page"""
-    return send_from_directory('../frontend', 'reports.html')
+    try:
+        return send_from_directory(FRONTEND_FOLDER, 'reports.html')
+    except Exception as e:
+        print(f"[ERROR] Failed to serve reports.html: {e}")
+        return jsonify({
+            'error': 'reports.html not found',
+            'frontend_folder': FRONTEND_FOLDER,
+            'exists': os.path.exists(FRONTEND_FOLDER),
+            'files': os.listdir(FRONTEND_FOLDER) if os.path.exists(FRONTEND_FOLDER) else []
+        }), 404
+
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    """Serve static files (CSS, JS, images) for the frontend"""
+    try:
+        static_folder = os.path.join(FRONTEND_FOLDER, 'static')
+        return send_from_directory(static_folder, filename)
+    except Exception as e:
+        print(f"[ERROR] Failed to serve static file {filename}: {e}")
+        return jsonify({
+            'error': 'Static file not found',
+            'filename': filename,
+            'static_folder': os.path.join(FRONTEND_FOLDER, 'static')
+        }), 404
 
 @app.route('/api/next-bill-no')
 def next_bill_no_route():
     """Get next bill number"""
-    return jsonify({'bill_no': get_next_bill_no()})
+    try:
+        return jsonify({'bill_no': get_next_bill_no()})
+    except Exception as e:
+        print(f"[ERROR] Failed to get next bill number: {e}")
+        return jsonify({'error': str(e), 'bill_no': 1}), 500
 
 if __name__ == '__main__':
     print("\n" + "="*60)
