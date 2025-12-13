@@ -8,7 +8,7 @@ let mainWindow = null;
 let loginWindow = null;
 let splashWindow = null;
 let backendProcess = null;
-let printWindow = null;
+let printWindow = null;  
 
 const isDev = !app.isPackaged;
 const BACKEND_EXE = isDev
