@@ -184,7 +184,7 @@ def add_slip():
     cursor = None
     try:
         data = request.json
-        print("📝 Incoming slip data:", {k: v for k, v in data.items() if k in ['party_name', 'date', 'bags', 'net_weight_kg']})
+        print("[DEBUG] Incoming slip data:", {k: v for k, v in data.items() if k in ['party_name', 'date', 'bags', 'net_weight_kg']})
         data = calculate_fields(data)
 
         bill_no = get_next_bill_no()
@@ -194,7 +194,7 @@ def add_slip():
 
         slip_date = parse_datetime_to_ist(data.get('date')) or get_ist_datetime()
 
-        print(f"✓ Calculated fields: payable={data.get('payable_amount')}, total_purchase={data.get('total_purchase_amount')}")
+        print(f"[OK] Calculated fields: payable={data.get('payable_amount')}, total_purchase={data.get('total_purchase_amount')}")
 
         cursor.execute('''
             INSERT INTO purchase_slips (
@@ -302,7 +302,7 @@ def add_slip():
         slip_id = cursor.lastrowid
         conn.commit()
 
-        print(f"✅ Slip saved successfully: ID={slip_id}, Bill No={bill_no}")
+        print(f"[OK] Slip saved successfully: ID={slip_id}, Bill No={bill_no}")
 
         return jsonify({
             'success': True,
@@ -312,7 +312,7 @@ def add_slip():
         }), 201
 
     except Exception as e:
-        print(f"❌ Error adding slip: {e}")
+        print(f"[ERROR] Error adding slip: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -738,7 +738,7 @@ def print_slip(slip_id):
 def get_unloading_godowns():
     """Get all unloading godown names for dropdown"""
     print("\n" + "="*60)
-    print("🔵 GET /api/unloading-godowns - Request received")
+    print("[INFO] GET /api/unloading-godowns - Request received")
     print("="*60)
 
     conn = None
@@ -755,9 +755,9 @@ def get_unloading_godowns():
 
         godowns = cursor.fetchall()
 
-        print(f"✅ Fetched {len(godowns)} unloading godowns")
+        print(f"[OK] Fetched {len(godowns)} unloading godowns")
         if godowns:
-            print(f"📋 Godown list: {[g['name'] for g in godowns]}")
+            print(f"[INFO] Godown list: {[g['name'] for g in godowns]}")
 
         return jsonify({
             'success': True,
@@ -766,7 +766,7 @@ def get_unloading_godowns():
 
     except Exception as e:
         error_msg = f"Error fetching unloading godowns: {str(e)}"
-        print(f"❌ {error_msg}")
+        print(f"[ERROR] {error_msg}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -785,17 +785,17 @@ def get_unloading_godowns():
 def add_unloading_godown():
     """Add a new unloading godown (or return existing if duplicate)"""
     print("\n" + "="*60)
-    print("🔵 POST /api/unloading-godowns - Request received")
+    print("[INFO] POST /api/unloading-godowns - Request received")
     print("="*60)
 
     conn = None
     cursor = None
     try:
         data = request.get_json()
-        print(f"📥 Request data: {data}")
+        print(f"[DEBUG] Request data: {data}")
 
         godown_name = data.get('name', '').strip()
-        print(f"📝 Godown name: '{godown_name}'")
+        print(f"[DEBUG] Godown name: '{godown_name}'")
 
         if not godown_name:
             return jsonify({
@@ -811,7 +811,7 @@ def add_unloading_godown():
         existing = cursor.fetchone()
 
         if existing:
-            print(f"✓ Godown '{godown_name}' already exists")
+            print(f"[OK] Godown '{godown_name}' already exists")
             return jsonify({
                 'success': True,
                 'godown': {'id': existing['id'], 'name': existing['name']},
@@ -823,7 +823,7 @@ def add_unloading_godown():
         conn.commit()
 
         new_id = cursor.lastrowid
-        print(f"✓ Added new godown: {godown_name} (ID: {new_id})")
+        print(f"[OK] Added new godown: {godown_name} (ID: {new_id})")
 
         # Fetch all godowns to return updated list
         cursor.execute('SELECT id, name FROM unloading_godowns ORDER BY name ASC')
@@ -838,7 +838,7 @@ def add_unloading_godown():
 
     except Exception as e:
         error_msg = f"Error adding unloading godown: {str(e)}"
-        print(f"❌ {error_msg}")
+        print(f"[ERROR] {error_msg}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -859,7 +859,7 @@ def add_unloading_godown():
 def get_dashboard_data():
     """Get comprehensive dashboard data with analytics"""
     print("\n" + "="*60)
-    print("📊 GET /api/dashboard - Dashboard data request")
+    print("[INFO] GET /api/dashboard - Dashboard data request")
     print("="*60)
 
     conn = None
@@ -1121,7 +1121,7 @@ def get_dashboard_data():
             else:
                 farmer['lastPaymentDate'] = None
 
-        print(f"✅ Dashboard data retrieved successfully for period: {period}")
+        print(f"[OK] Dashboard data retrieved successfully for period: {period}")
 
         return jsonify({
             'success': True,
@@ -1138,7 +1138,7 @@ def get_dashboard_data():
 
     except Exception as e:
         error_msg = f"Error fetching dashboard data: {str(e)}"
-        print(f"❌ {error_msg}")
+        print(f"[ERROR] {error_msg}")
         import traceback
         traceback.print_exc()
         return jsonify({

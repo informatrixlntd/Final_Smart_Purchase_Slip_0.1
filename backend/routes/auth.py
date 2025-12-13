@@ -103,7 +103,7 @@ def get_users():
             user['is_active'] = bool(user.get('is_active', True))
 
         # Log for debugging
-        print(f"✓ Fetched {len(users)} users from database")
+        print(f"[OK] Fetched {len(users)} users from database")
 
         return jsonify({
             'success': True,
@@ -112,7 +112,7 @@ def get_users():
 
     except mysql.connector.Error as db_error:
         error_msg = f"Database error: {str(db_error)}"
-        print(f"❌ {error_msg}")
+        print(f"[ERROR] {error_msg}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -123,7 +123,7 @@ def get_users():
 
     except Exception as e:
         error_msg = f"Unexpected error: {str(e)}"
-        print(f"❌ {error_msg}")
+        print(f"[ERROR] {error_msg}")
         import traceback
         traceback.print_exc()
         return jsonify({

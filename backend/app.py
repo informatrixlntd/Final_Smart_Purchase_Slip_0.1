@@ -62,13 +62,13 @@ def next_bill_no_route():
 
 if __name__ == '__main__':
     print("\n" + "="*60)
-    print("🌾 RICE MILL PURCHASE SLIP MANAGER")
+    print("RICE MILL PURCHASE SLIP MANAGER")
     print("="*60)
-    print("\n✅ Server starting...")
-    print("📍 Backend running on: http://127.0.0.1:5000")
+    print("\n[OK] Server starting...")
+    print("[INFO] Backend running on: http://127.0.0.1:5000")
     if getattr(sys, 'frozen', False):
-        print("📦 Running from packaged executable")
-    print("\n💡 Press CTRL+C to stop the server\n")
+        print("[INFO] Running from packaged executable")
+    print("\n[INFO] Press CTRL+C to stop the server\n")
 
     # Use debug mode only in development
     is_debug = not getattr(sys, 'frozen', False)
