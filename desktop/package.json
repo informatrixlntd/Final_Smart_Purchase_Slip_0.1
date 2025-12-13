@@ -39,7 +39,9 @@
       {
         "from": "../dist-backend",
         "to": "dist-backend",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "../config.json",
@@ -48,21 +50,21 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "assets/spslogo.png"
+      "icon": "assets/spslogo.ico"
     },
     "mac": {
-      "icon": "assets/spslogo.png"
+      "icon": "assets/spslogo.ico"
     },
     "linux": {
-      "icon": "assets/spslogo.png"
+      "icon": "assets/spslogo.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "installerIcon": "assets/spslogo.png",
-      "uninstallerIcon": "assets/spslogo.png",
+      "installerIcon": "assets/spslogo.ico",
+      "uninstallerIcon": "assets/spslogo.ico",
       "license": "../LICENSE.txt"
     }
   },
