@@ -1,7 +1,210 @@
-t the HTML directly using webContents.print()
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const path = require('path');
+const { spawn } = require('child_process');
+const http = require('http');
+const fs = require('fs');
+
+let mainWindow = null;
+let loginWindow = null;
+let splashWindow = null;
+let backendProcess = null;
+let printWindow = null;
+
+const isDev = !app.isPackaged;
+const BACKEND_EXE = isDev
+    ? path.join(__dirname, '..', 'dist-backend', 'purchase_slips_backend.exe')
+    : path.join(process.resourcesPath, 'backend', 'purchase_slips_backend.exe');
+
+const BACKEND_URL = 'http://127.0.0.1:5000';
+
+function startBackend() {
+    return new Promise((resolve, reject) => {
+        console.log('[BACKEND] Starting backend server...');
+        console.log('[BACKEND] Executable path:', BACKEND_EXE);
+
+        if (!fs.existsSync(BACKEND_EXE)) {
+            console.error('[BACKEND] Backend executable not found at:', BACKEND_EXE);
+            reject(new Error(`Backend executable not found: ${BACKEND_EXE}`));
+            return;
+        }
+
+        backendProcess = spawn(BACKEND_EXE, [], {
+            cwd: path.dirname(BACKEND_EXE),
+            detached: false,
+            windowsHide: true
+        });
+
+        backendProcess.stdout.on('data', (data) => {
+            console.log('[BACKEND]', data.toString().trim());
+        });
+
+        backendProcess.stderr.on('data', (data) => {
+            console.error('[BACKEND ERROR]', data.toString().trim());
+        });
+
+        backendProcess.on('error', (err) => {
+            console.error('[BACKEND] Failed to start:', err);
+            reject(err);
+        });
+
+        backendProcess.on('exit', (code) => {
+            console.log(`[BACKEND] Process exited with code ${code}`);
+            if (code !== 0 && code !== null) {
+                backendProcess = null;
+            }
+        });
+
+        let attempts = 0;
+        const maxAttempts = 30;
+        const checkInterval = setInterval(() => {
+            http.get(BACKEND_URL, (res) => {
+                if (res.statusCode === 200 || res.statusCode === 404) {
+                    console.log('[BACKEND] Backend is ready!');
+                    clearInterval(checkInterval);
+                    resolve();
+                }
+            }).on('error', () => {
+                attempts++;
+                if (attempts >= maxAttempts) {
+                    clearInterval(checkInterval);
+                    reject(new Error('Backend failed to start within timeout'));
+                }
+            });
+        }, 500);
+    });
+}
+
+function stopBackend() {
+    if (backendProcess) {
+        console.log('[BACKEND] Stopping backend server...');
+        try {
+            if (process.platform === 'win32') {
+                spawn('taskkill', ['/pid', backendProcess.pid, '/f', '/t']);
+            } else {
+                backendProcess.kill('SIGTERM');
+            }
+        } catch (error) {
+            console.error('[BACKEND] Error stopping backend:', error);
+        }
+        backendProcess = null;
+    }
+}
+
+function createSplashWindow() {
+    splashWindow = new BrowserWindow({
+        width: 500,
+        height: 300,
+        transparent: true,
+        frame: false,
+        alwaysOnTop: true,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true
+        }
+    });
+
+    splashWindow.loadFile(path.join(__dirname, 'splash.html'));
+    splashWindow.center();
+}
+
+function createLoginWindow() {
+    if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.close();
+        splashWindow = null;
+    }
+
+    loginWindow = new BrowserWindow({
+        width: 450,
+        height: 600,
+        resizable: false,
+        frame: true,
+        icon: path.join(__dirname, 'assets', 'spslogo.png'),
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        },
+        title: 'Smart Purchase Slip Manager - Login'
+    });
+
+    loginWindow.loadFile(path.join(__dirname, 'login.html'));
+    loginWindow.center();
+
+    loginWindow.on('closed', () => {
+        loginWindow = null;
+        if (!mainWindow) {
+            app.quit();
+        }
+    });
+}
+
+function createMainWindow() {
+    if (loginWindow && !loginWindow.isDestroyed()) {
+        loginWindow.close();
+        loginWindow = null;
+    }
+
+    mainWindow = new BrowserWindow({
+        width: 1400,
+        height: 900,
+        minWidth: 1000,
+        minHeight: 700,
+        icon: path.join(__dirname, 'assets', 'spslogo.png'),
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+            enableRemoteModule: true
+        },
+        title: 'Smart Purchase Slip Manager'
+    });
+
+    mainWindow.loadFile(path.join(__dirname, 'app.html'));
+    mainWindow.maximize();
+
+    if (isDev) {
+        mainWindow.webContents.openDevTools();
+    }
+
+    mainWindow.on('closed', () => {
+        mainWindow = null;
+    });
+}
+
+ipcMain.on('login-success', (event, userData) => {
+    console.log('[AUTH] Login successful, opening main window');
+    createMainWindow();
+});
+
+ipcMain.on('logout', () => {
+    console.log('[AUTH] Logout requested');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.close();
+        mainWindow = null;
+    }
+    createLoginWindow();
+});
+
+ipcMain.on('print-slip-html', async (event, slipId) => {
+    console.log('[PRINT] Direct HTML print requested for slip:', slipId);
+
+    try {
+        if (!printWindow || printWindow.isDestroyed()) {
+            printWindow = new BrowserWindow({
+                width: 800,
+                height: 1100,
+                show: false,
+                webPreferences: {
+                    nodeIntegration: false,
+                    contextIsolation: true
+                }
+            });
+        }
+
+        await printWindow.loadURL(`http://localhost:5000/print/${slipId}`);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
         printWindow.webContents.print({
-            silent: false, // Show print dialog
-            printBackground: true, // Include background colors/images
+            silent: false,
+            printBackground: true,
             color: true,
             margins: {
                 marginType: 'none'
@@ -12,29 +215,25 @@ t the HTML directly using webContents.print()
             copies: 1
         }, (success, failureReason) => {
             if (success) {
-                console.log('✅ Print job sent successfully');
+                console.log('[PRINT] Print job sent successfully');
             } else {
-                console.error('❌ Print failed:', failureReason);
+                console.error('[PRINT] Print failed:', failureReason);
             }
 
-            // Clean up the print window
             if (printWindow && !printWindow.isDestroyed()) {
                 printWindow.close();
                 printWindow = null;
-                console.log('🧹 Print window closed');
+                console.log('[PRINT] Print window closed');
             }
         });
 
     } catch (error) {
-        console.error('❌ Error during HTML print:', error);
+        console.error('[PRINT] Error during HTML print:', error);
 
-        // Clean up print window if it exists
         if (printWindow && !printWindow.isDestroyed()) {
             printWindow.close();
         }
 
-        // Show error to user
-        const { dialog } = require('electron');
         dialog.showErrorBox(
             'Print Error',
             `Failed to print slip:\n\n${error.message}\n\nPlease ensure the Flask server is running.`
@@ -42,22 +241,14 @@ t the HTML directly using webContents.print()
     }
 });
 
-/**
- * Print slip handler with PDF preview
- * Generates PDF using printToPDF and displays in custom viewer
- * User can print, download, or share on WhatsApp from the viewer
- */
 ipcMain.on('print-slip', async (event, data) => {
-    const { dialog, shell } = require('electron');
     let printWindow = null;
 
-    // Handle both old format (just slipId) and new format (object with slipId)
     const slipId = typeof data === 'object' ? data.slipId : data;
     const mobileNumber = typeof data === 'object' ? data.mobileNumber : null;
     const billNo = typeof data === 'object' ? data.billNo : null;
 
     try {
-        // Create hidden window to load slip content
         printWindow = new BrowserWindow({
             width: 800,
             height: 1100,
@@ -68,13 +259,9 @@ ipcMain.on('print-slip', async (event, data) => {
             }
         });
 
-        // Load slip HTML from Flask server
         await printWindow.loadURL(`http://localhost:5000/print/${slipId}`);
-
-        // Wait for content to fully render
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-        // Generate PDF using Electron's built-in printToPDF
         const pdfData = await printWindow.webContents.printToPDF({
             marginsType: 0,
             pageSize: 'A4',
@@ -83,14 +270,11 @@ ipcMain.on('print-slip', async (event, data) => {
             landscape: false
         });
 
-        // Close the temporary window
         printWindow.close();
         printWindow = null;
 
-        // Convert PDF to base64 for embedding
         const pdfBase64 = pdfData.toString('base64');
 
-        // Create PDF viewer window with toolbar
         const viewerWindow = new BrowserWindow({
             width: 900,
             height: 1200,
@@ -102,7 +286,6 @@ ipcMain.on('print-slip', async (event, data) => {
             title: `Purchase Slip ${slipId}`
         });
 
-        // Create HTML with embedded PDF viewer and WhatsApp button
         const viewerHTML = `
 <!DOCTYPE html>
 <html>
@@ -201,9 +384,7 @@ ipcMain.on('print-slip', async (event, data) => {
         const billNo = ${billNo ? `'${billNo}'` : 'null'};
 
         function printPDF() {
-            // FIXED: Print the actual HTML slip using IPC
-            // DO NOT use window.print() - it doesn't work with PDF iframes
-            console.log('🖨️  Print button clicked - sending IPC to print HTML');
+            console.log('[PRINT] Print button clicked - sending IPC to print HTML');
             ipcRenderer.send('print-slip-html', slipId);
         }
 
@@ -221,34 +402,26 @@ ipcMain.on('print-slip', async (event, data) => {
             }
 
             try {
-                // Create permanent WhatsApp share folder in user's Documents
                 const documentsPath = path.join(os.homedir(), 'Documents', 'PurchaseSlipWhatsApp');
                 if (!fs.existsSync(documentsPath)) {
                     fs.mkdirSync(documentsPath, { recursive: true });
                 }
 
-                // Save PDF to permanent folder with timestamp
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
                 const fileName = 'Purchase_Slip_' + (billNo || slipId) + '_' + timestamp + '.pdf';
                 const filePath = path.join(documentsPath, fileName);
 
-                // Convert base64 to buffer and save
                 const pdfBuffer = Buffer.from(pdfBase64, 'base64');
                 fs.writeFileSync(filePath, pdfBuffer);
 
-                // Clean mobile number and construct WhatsApp URL
                 const cleanMobile = mobileNumber.replace(/[^0-9]/g, '');
                 const whatsappNumber = cleanMobile.startsWith('91') ? cleanMobile : '91' + cleanMobile;
 
-                // Send IPC to main process to handle WhatsApp sharing with file
                 ipcRenderer.send('share-whatsapp', {
                     filePath: filePath,
                     phoneNumber: whatsappNumber,
                     billNo: billNo || slipId
                 });
-
-                // Show success message
-                // alert('📱 WhatsApp Automation Started\\n\\nOpening WhatsApp Desktop...\\nChat: +' + whatsappNumber + '\\nPDF: ' + fileName + '\\n\\nThe PDF will be automatically attached.\\nJust press Send in WhatsApp! 🚀');
 
             } catch (error) {
                 alert('Error preparing WhatsApp share:\\n\\n' + error.message + '\\n\\nPlease try again or contact support.');
@@ -256,12 +429,11 @@ ipcMain.on('print-slip', async (event, data) => {
             }
         }
 
-        // Add keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'p') {
                 e.preventDefault();
-                console.log('⌨️  Ctrl+P pressed - triggering print');
-                printPDF(); // This now calls the IPC method, not window.print()
+                console.log('[PRINT] Ctrl+P pressed - triggering print');
+                printPDF();
             }
         });
     </script>
@@ -269,21 +441,111 @@ ipcMain.on('print-slip', async (event, data) => {
 </html>
         `;
 
-        // Load the viewer with embedded PDF
         viewerWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(viewerHTML));
 
     } catch (error) {
-        console.error('Error generating PDF:', error);
+        console.error('[PRINT] Error generating PDF:', error);
 
-        // Clean up print window if it exists
         if (printWindow && !printWindow.isDestroyed()) {
             printWindow.close();
         }
 
-        // Show error dialog to user
         dialog.showErrorBox(
             'Print Error',
             `Failed to generate PDF:\n\n${error.message}\n\nPlease ensure the Flask server is running.`
         );
     }
+});
+
+ipcMain.on('share-whatsapp', async (event, data) => {
+    const { filePath, phoneNumber, billNo } = data;
+
+    try {
+        const whatsappUrl = `https://web.whatsapp.com/send?phone=${phoneNumber}`;
+        await shell.openExternal(whatsappUrl);
+
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        await shell.openPath(filePath);
+
+        console.log('[WHATSAPP] Opened WhatsApp and PDF file for manual attachment');
+
+    } catch (error) {
+        console.error('[WHATSAPP] Error:', error);
+        dialog.showErrorBox(
+            'WhatsApp Share Error',
+            `Failed to open WhatsApp:\n\n${error.message}\n\nThe PDF was saved to:\n${filePath}\n\nYou can manually share it.`
+        );
+    }
+});
+
+app.whenReady().then(async () => {
+    console.log('[APP] Application starting...');
+    console.log('[APP] isPackaged:', app.isPackaged);
+    console.log('[APP] resourcesPath:', process.resourcesPath);
+
+    createSplashWindow();
+
+    try {
+        await startBackend();
+        console.log('[APP] Backend started successfully');
+
+        setTimeout(() => {
+            createLoginWindow();
+        }, 1500);
+
+    } catch (error) {
+        console.error('[APP] Failed to start backend:', error);
+
+        if (splashWindow && !splashWindow.isDestroyed()) {
+            splashWindow.close();
+        }
+
+        const response = dialog.showMessageBoxSync({
+            type: 'error',
+            title: 'Backend Start Failed',
+            message: 'Failed to start the backend server',
+            detail: `Error: ${error.message}\n\nBackend path: ${BACKEND_EXE}\n\nThe application cannot continue.`,
+            buttons: ['Exit', 'Show Logs'],
+            defaultId: 0
+        });
+
+        if (response === 1) {
+            const logsPath = path.join(app.getPath('userData'), 'logs');
+            shell.openPath(logsPath);
+        }
+
+        app.quit();
+    }
+});
+
+app.on('window-all-closed', () => {
+    console.log('[APP] All windows closed');
+    stopBackend();
+    app.quit();
+});
+
+app.on('before-quit', () => {
+    console.log('[APP] Application quitting...');
+    stopBackend();
+});
+
+app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+        createLoginWindow();
+    }
+});
+
+process.on('exit', () => {
+    stopBackend();
+});
+
+process.on('SIGINT', () => {
+    stopBackend();
+    process.exit();
+});
+
+process.on('SIGTERM', () => {
+    stopBackend();
+    process.exit();
 });
