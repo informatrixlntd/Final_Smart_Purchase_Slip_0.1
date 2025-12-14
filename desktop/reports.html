@@ -77,6 +77,38 @@
                 </div>
                 <div class="modal-body">
                     <form id="editForm">
+                        <div class="section-header">Payment Details</div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Payment Method</label>
+                                <input type="text" class="form-control" name="payment_method" id="edit_payment_method">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Payment Date</label>
+                                <input type="datetime-local" class="form-control" name="payment_date" id="edit_payment_date">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Payment Amount</label>
+                                <input type="number" step="0.01" class="form-control" name="payment_amount" id="edit_payment_amount">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Payment Bank Account</label>
+                                <input type="text" class="form-control" name="payment_bank_account" id="edit_payment_bank_account">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Payment Due Date</label>
+                                <input type="datetime-local" class="form-control" name="payment_due_date" id="edit_payment_due_date">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Payment Due Comment</label>
+                                <textarea class="form-control" name="payment_due_comment" id="edit_payment_due_comment" rows="1"></textarea>
+                            </div>
+                        </div>
+
                         <div class="section-header">Deduction Details</div>
                         <div class="row mb-3">
                             <div class="col-md-6">
@@ -96,34 +128,154 @@
                         </div>
 
                         <div class="section-header">Payment Instalments</div>
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label class="form-label">Instalment 1</label>
-                                <textarea class="form-control" name="instalment_1" id="edit_instalment_1" rows="2" placeholder="Date, Amount, Method"></textarea>
+
+                        <div style="border: 1px solid #dee2e6; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
+                            <h6 class="mb-3">Instalment 1</h6>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Date</label>
+                                    <input type="datetime-local" class="form-control" name="instalment_1_date" id="edit_instalment_1_date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Amount</label>
+                                    <input type="number" step="0.01" class="form-control" name="instalment_1_amount" id="edit_instalment_1_amount">
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Payment Method</label>
+                                    <input type="text" class="form-control" name="instalment_1_payment_method" id="edit_instalment_1_payment_method">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Bank Account</label>
+                                    <input type="text" class="form-control" name="instalment_1_payment_bank_account" id="edit_instalment_1_payment_bank_account">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label class="form-label">Comment</label>
+                                    <textarea class="form-control" name="instalment_1_comment" id="edit_instalment_1_comment" rows="2"></textarea>
+                                </div>
                             </div>
                         </div>
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label class="form-label">Instalment 2</label>
-                                <textarea class="form-control" name="instalment_2" id="edit_instalment_2" rows="2" placeholder="Date, Amount, Method"></textarea>
+
+                        <div style="border: 1px solid #dee2e6; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
+                            <h6 class="mb-3">Instalment 2</h6>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Date</label>
+                                    <input type="datetime-local" class="form-control" name="instalment_2_date" id="edit_instalment_2_date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Amount</label>
+                                    <input type="number" step="0.01" class="form-control" name="instalment_2_amount" id="edit_instalment_2_amount">
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Payment Method</label>
+                                    <input type="text" class="form-control" name="instalment_2_payment_method" id="edit_instalment_2_payment_method">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Bank Account</label>
+                                    <input type="text" class="form-control" name="instalment_2_payment_bank_account" id="edit_instalment_2_payment_bank_account">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label class="form-label">Comment</label>
+                                    <textarea class="form-control" name="instalment_2_comment" id="edit_instalment_2_comment" rows="2"></textarea>
+                                </div>
                             </div>
                         </div>
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label class="form-label">Instalment 3</label>
-                                <textarea class="form-control" name="instalment_3" id="edit_instalment_3" rows="2" placeholder="Date, Amount, Method"></textarea>
+
+                        <div style="border: 1px solid #dee2e6; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
+                            <h6 class="mb-3">Instalment 3</h6>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Date</label>
+                                    <input type="datetime-local" class="form-control" name="instalment_3_date" id="edit_instalment_3_date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Amount</label>
+                                    <input type="number" step="0.01" class="form-control" name="instalment_3_amount" id="edit_instalment_3_amount">
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Payment Method</label>
+                                    <input type="text" class="form-control" name="instalment_3_payment_method" id="edit_instalment_3_payment_method">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Bank Account</label>
+                                    <input type="text" class="form-control" name="instalment_3_payment_bank_account" id="edit_instalment_3_payment_bank_account">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label class="form-label">Comment</label>
+                                    <textarea class="form-control" name="instalment_3_comment" id="edit_instalment_3_comment" rows="2"></textarea>
+                                </div>
                             </div>
                         </div>
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label class="form-label">Instalment 4</label>
-                                <textarea class="form-control" name="instalment_4" id="edit_instalment_4" rows="2" placeholder="Date, Amount, Method"></textarea>
+
+                        <div style="border: 1px solid #dee2e6; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
+                            <h6 class="mb-3">Instalment 4</h6>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Date</label>
+                                    <input type="datetime-local" class="form-control" name="instalment_4_date" id="edit_instalment_4_date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Amount</label>
+                                    <input type="number" step="0.01" class="form-control" name="instalment_4_amount" id="edit_instalment_4_amount">
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Payment Method</label>
+                                    <input type="text" class="form-control" name="instalment_4_payment_method" id="edit_instalment_4_payment_method">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Bank Account</label>
+                                    <input type="text" class="form-control" name="instalment_4_payment_bank_account" id="edit_instalment_4_payment_bank_account">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label class="form-label">Comment</label>
+                                    <textarea class="form-control" name="instalment_4_comment" id="edit_instalment_4_comment" rows="2"></textarea>
+                                </div>
                             </div>
                         </div>
-                        <div class="row mb-4">
-                            <div class="col-md-12">
-                                <label class="form-label">Instalment 5</label>
-                                <textarea class="form-control" name="instalment_5" id="edit_instalment_5" rows="2" placeholder="Date, Amount, Method"></textarea>
+
+                        <div style="border: 1px solid #dee2e6; padding: 15px; margin-bottom: 15px; border-radius: 5px;">
+                            <h6 class="mb-3">Instalment 5</h6>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Date</label>
+                                    <input type="datetime-local" class="form-control" name="instalment_5_date" id="edit_instalment_5_date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Amount</label>
+                                    <input type="number" step="0.01" class="form-control" name="instalment_5_amount" id="edit_instalment_5_amount">
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Payment Method</label>
+                                    <input type="text" class="form-control" name="instalment_5_payment_method" id="edit_instalment_5_payment_method">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Bank Account</label>
+                                    <input type="text" class="form-control" name="instalment_5_payment_bank_account" id="edit_instalment_5_payment_bank_account">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label class="form-label">Comment</label>
+                                    <textarea class="form-control" name="instalment_5_comment" id="edit_instalment_5_comment" rows="2"></textarea>
+                                </div>
                             </div>
                         </div>
 
@@ -158,6 +310,14 @@
     <script>
         let allSlips = [];
         let currentEditingSlipId = null;
+
+        // Helper function to format MySQL datetime for datetime-local input
+        function formatDateTimeForInput(dateTimeStr) {
+            if (!dateTimeStr) return '';
+            // MySQL format: "2024-12-14 10:30:00"
+            // Input format: "2024-12-14T10:30"
+            return dateTimeStr.replace(' ', 'T').substring(0, 16);
+        }
 
         async function loadSlips() {
             try {
@@ -214,20 +374,55 @@
                     currentEditingSlipId = slipId;
                     const slip = data.slip;
 
+                    // Payment Details
                     document.getElementById('edit_payment_method').value = slip.payment_method || '';
-                    document.getElementById('edit_payment_date').value = slip.payment_date || '';
+                    document.getElementById('edit_payment_date').value = formatDateTimeForInput(slip.payment_date);
                     document.getElementById('edit_payment_amount').value = slip.payment_amount || '';
                     document.getElementById('edit_payment_bank_account').value = slip.payment_bank_account || '';
-                    document.getElementById('edit_payment_due_date').value = slip.payment_due_date || '';
+                    document.getElementById('edit_payment_due_date').value = formatDateTimeForInput(slip.payment_due_date);
                     document.getElementById('edit_payment_due_comment').value = slip.payment_due_comment || '';
+
+                    // Deduction Details
                     document.getElementById('edit_quality_diff').value = slip.quality_diff || '';
                     document.getElementById('edit_moisture_ded_percent').value = slip.moisture_ded_percent || '';
                     document.getElementById('edit_quality_diff_comment').value = slip.quality_diff_comment || '';
-                    document.getElementById('edit_instalment_1').value = slip.instalment_1 || '';
-                    document.getElementById('edit_instalment_2').value = slip.instalment_2 || '';
-                    document.getElementById('edit_instalment_3').value = slip.instalment_3 || '';
-                    document.getElementById('edit_instalment_4').value = slip.instalment_4 || '';
-                    document.getElementById('edit_instalment_5').value = slip.instalment_5 || '';
+
+                    // Instalment 1
+                    document.getElementById('edit_instalment_1_date').value = formatDateTimeForInput(slip.instalment_1_date);
+                    document.getElementById('edit_instalment_1_amount').value = slip.instalment_1_amount || '';
+                    document.getElementById('edit_instalment_1_payment_method').value = slip.instalment_1_payment_method || '';
+                    document.getElementById('edit_instalment_1_payment_bank_account').value = slip.instalment_1_payment_bank_account || '';
+                    document.getElementById('edit_instalment_1_comment').value = slip.instalment_1_comment || '';
+
+                    // Instalment 2
+                    document.getElementById('edit_instalment_2_date').value = formatDateTimeForInput(slip.instalment_2_date);
+                    document.getElementById('edit_instalment_2_amount').value = slip.instalment_2_amount || '';
+                    document.getElementById('edit_instalment_2_payment_method').value = slip.instalment_2_payment_method || '';
+                    document.getElementById('edit_instalment_2_payment_bank_account').value = slip.instalment_2_payment_bank_account || '';
+                    document.getElementById('edit_instalment_2_comment').value = slip.instalment_2_comment || '';
+
+                    // Instalment 3
+                    document.getElementById('edit_instalment_3_date').value = formatDateTimeForInput(slip.instalment_3_date);
+                    document.getElementById('edit_instalment_3_amount').value = slip.instalment_3_amount || '';
+                    document.getElementById('edit_instalment_3_payment_method').value = slip.instalment_3_payment_method || '';
+                    document.getElementById('edit_instalment_3_payment_bank_account').value = slip.instalment_3_payment_bank_account || '';
+                    document.getElementById('edit_instalment_3_comment').value = slip.instalment_3_comment || '';
+
+                    // Instalment 4
+                    document.getElementById('edit_instalment_4_date').value = formatDateTimeForInput(slip.instalment_4_date);
+                    document.getElementById('edit_instalment_4_amount').value = slip.instalment_4_amount || '';
+                    document.getElementById('edit_instalment_4_payment_method').value = slip.instalment_4_payment_method || '';
+                    document.getElementById('edit_instalment_4_payment_bank_account').value = slip.instalment_4_payment_bank_account || '';
+                    document.getElementById('edit_instalment_4_comment').value = slip.instalment_4_comment || '';
+
+                    // Instalment 5
+                    document.getElementById('edit_instalment_5_date').value = formatDateTimeForInput(slip.instalment_5_date);
+                    document.getElementById('edit_instalment_5_amount').value = slip.instalment_5_amount || '';
+                    document.getElementById('edit_instalment_5_payment_method').value = slip.instalment_5_payment_method || '';
+                    document.getElementById('edit_instalment_5_payment_bank_account').value = slip.instalment_5_payment_bank_account || '';
+                    document.getElementById('edit_instalment_5_comment').value = slip.instalment_5_comment || '';
+
+                    // Other Details
                     document.getElementById('edit_prepared_by').value = slip.prepared_by || '';
                     document.getElementById('edit_authorised_sign').value = slip.authorised_sign || '';
                     document.getElementById('edit_paddy_unloading_godown').value = slip.paddy_unloading_godown || '';
