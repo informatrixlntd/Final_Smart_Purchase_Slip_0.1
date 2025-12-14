@@ -405,14 +405,16 @@ def get_slip(slip_id):
         slip['total_paid_amount'] = total_paid
         slip['balance_amount'] = balance_amount
 
-        # Format all datetime fields to IST
+        # Convert datetime fields to ISO format for editing (JavaScript compatible)
         datetime_fields = ['date', 'payment_date', 'payment_due_date',
                           'instalment_1_date', 'instalment_2_date', 'instalment_3_date',
                           'instalment_4_date', 'instalment_5_date']
 
         for field in datetime_fields:
             if slip.get(field):
-                slip[field] = format_ist_datetime(slip[field])
+                # Convert to ISO format string (YYYY-MM-DDTHH:MM:SS)
+                if isinstance(slip[field], datetime):
+                    slip[field] = slip[field].strftime('%Y-%m-%d %H:%M:%S')
 
         return jsonify({
             'success': True,

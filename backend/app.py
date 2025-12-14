@@ -98,11 +98,6 @@ def index():
     """Serve the main form page"""
     return send_from_directory(desktop_folder, 'index.html')
 
-@app.route('/reports')
-def reports():
-    """Serve the reports page"""
-    return send_from_directory(desktop_folder, 'reports.html')
-
 @app.route('/api/next-bill-no')
 def next_bill_no_route():
     """Get next bill number"""

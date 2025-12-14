@@ -27,7 +27,6 @@ datas = [
 
     # Desktop HTML files and static assets
     ('desktop/index.html', 'desktop'),
-    ('desktop/reports.html', 'desktop'),
     ('desktop/static', 'desktop/static'),
 
     # Configuration file - CRITICAL
