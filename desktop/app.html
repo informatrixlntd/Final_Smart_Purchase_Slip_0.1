@@ -1005,10 +1005,10 @@
                                 <label class="form-label">Material Name</label>
                                 <input type="text" class="form-control" id="edit_material_name" name="material_name">
                             </div>
-                            <div class="col-md-4">
+                            <!-- <div class="col-md-4">
                                 <label class="form-label">Ticket No</label>
                                 <input type="text" class="form-control" id="edit_ticket_no" name="ticket_no">
-                            </div>
+                            </div> -->
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-4">
@@ -1180,8 +1180,13 @@
                                         <select class="form-select" id="edit_instalment_1_payment_method" name="instalment_1_payment_method">
                                             <option value="">Select</option>
                                             <option value="Cash">Cash</option>
-                                            <option value="Online Transfer">Online Transfer</option>
                                             <option value="Cheque">Cheque</option>
+                                            <option value="NEFT">NEFT</option>
+                                            <option value="RTGS">RTGS</option>
+                                            <option value="IMPS">IMPS</option>
+                                            <option value="UPI">UPI</option>
+                                            <option value="Bank Transfer">Bank Transfer</option>
+                                            <option value="Other">Other</option>
                                         </select>
                                     </div>
                                     <div class="col-md-3">
@@ -1216,8 +1221,13 @@
                                         <select class="form-select" id="edit_instalment_2_payment_method" name="instalment_2_payment_method">
                                             <option value="">Select</option>
                                             <option value="Cash">Cash</option>
-                                            <option value="Online Transfer">Online Transfer</option>
                                             <option value="Cheque">Cheque</option>
+                                            <option value="NEFT">NEFT</option>
+                                            <option value="RTGS">RTGS</option>
+                                            <option value="IMPS">IMPS</option>
+                                            <option value="UPI">UPI</option>
+                                            <option value="Bank Transfer">Bank Transfer</option>
+                                            <option value="Other">Other</option>
                                         </select>
                                     </div>
                                     <div class="col-md-3">
@@ -1252,8 +1262,13 @@
                                         <select class="form-select" id="edit_instalment_3_payment_method" name="instalment_3_payment_method">
                                             <option value="">Select</option>
                                             <option value="Cash">Cash</option>
-                                            <option value="Online Transfer">Online Transfer</option>
                                             <option value="Cheque">Cheque</option>
+                                            <option value="NEFT">NEFT</option>
+                                            <option value="RTGS">RTGS</option>
+                                            <option value="IMPS">IMPS</option>
+                                            <option value="UPI">UPI</option>
+                                            <option value="Bank Transfer">Bank Transfer</option>
+                                            <option value="Other">Other</option>
                                         </select>
                                     </div>
                                     <div class="col-md-3">
@@ -1286,10 +1301,15 @@
                                     <div class="col-md-3">
                                         <label class="form-label">Payment Method</label>
                                         <select class="form-select" id="edit_instalment_4_payment_method" name="instalment_4_payment_method">
-                                            <option value="">Select</option>
+                                           <option value="">Select</option>
                                             <option value="Cash">Cash</option>
-                                            <option value="Online Transfer">Online Transfer</option>
                                             <option value="Cheque">Cheque</option>
+                                            <option value="NEFT">NEFT</option>
+                                            <option value="RTGS">RTGS</option>
+                                            <option value="IMPS">IMPS</option>
+                                            <option value="UPI">UPI</option>
+                                            <option value="Bank Transfer">Bank Transfer</option>
+                                            <option value="Other">Other</option>
                                         </select>
                                     </div>
                                     <div class="col-md-3">
@@ -1324,8 +1344,13 @@
                                         <select class="form-select" id="edit_instalment_5_payment_method" name="instalment_5_payment_method">
                                             <option value="">Select</option>
                                             <option value="Cash">Cash</option>
-                                            <option value="Online Transfer">Online Transfer</option>
                                             <option value="Cheque">Cheque</option>
+                                            <option value="NEFT">NEFT</option>
+                                            <option value="RTGS">RTGS</option>
+                                            <option value="IMPS">IMPS</option>
+                                            <option value="UPI">UPI</option>
+                                            <option value="Bank Transfer">Bank Transfer</option>
+                                            <option value="Other">Other</option>
                                         </select>
                                     </div>
                                     <div class="col-md-3">
@@ -1728,12 +1753,11 @@
                                     <tr><td>Vehicle No</td><td>${slip.vehicle_no || '-'}</td></tr>
                                 </table>
                             </div>
-
                             <div class="view-section">
                                 <h5>Party Details</h5>
                                 <table class="view-table">
                                     <tr><td>Party Name</td><td>${slip.party_name || '-'}</td></tr>
-                                    <tr><td>Ticket No</td><td>${slip.ticket_no || '-'}</td></tr>
+                                    
                                     <tr><td>Material</td><td>${slip.material_name || '-'}</td></tr>
                                     <tr><td>Broker</td><td>${slip.broker || '-'}</td></tr>
                                     <tr><td>Terms of Delivery</td><td>${slip.terms_of_delivery || '-'}</td></tr>
@@ -1844,7 +1868,7 @@
             document.getElementById('edit_party_name').value = slip.party_name || '';
             document.getElementById('edit_mobile_number').value = slip.mobile_number || '';
             document.getElementById('edit_material_name').value = slip.material_name || '';
-            document.getElementById('edit_ticket_no').value = slip.ticket_no || '';
+            // document.getElementById('edit_ticket_no').value = slip.ticket_no || '';
             document.getElementById('edit_broker').value = slip.broker || '';
             document.getElementById('edit_terms_of_delivery').value = slip.terms_of_delivery || '';
             document.getElementById('edit_sup_inv_no').value = slip.sup_inv_no || '';
@@ -2466,3 +2490,6 @@
     </script>
 </body>
 </html>
+
+
+<!-- <tr><td>Ticket No</td><td>${slip.ticket_no || '-'}</td></tr> -->
