@@ -1971,123 +1971,47 @@
 
             // Create a custom print preview window with WhatsApp sharing
             const printWindow = window.open('', '_blank', 'width=900,height=1200');
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Purchase Slip ${slipId}</title>
-                    <style>
-                        * { margin: 0; padding: 0; box-sizing: border-box; }
-                        body {
-                            background: #525252;
-                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-                            overflow: hidden;
-                        }
-                        #toolbar {
-                            position: fixed;
-                            top: 0;
-                            left: 0;
-                            right: 0;
-                            background: #323639;
-                            padding: 12px 20px;
-                            display: flex;
-                            gap: 12px;
-                            justify-content: center;
-                            align-items: center;
-                            z-index: 1000;
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                        }
-                        button {
-                            background: #4a90e2;
-                            color: white;
-                            border: none;
-                            padding: 10px 24px;
-                            border-radius: 6px;
-                            cursor: pointer;
-                            font-size: 14px;
-                            font-weight: 500;
-                            transition: all 0.2s ease;
-                            display: flex;
-                            align-items: center;
-                            gap: 8px;
-                        }
-                        button:hover {
-                            background: #357abd;
-                            transform: translateY(-1px);
-                            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-                        }
-                        button:active {
-                            transform: translateY(0);
-                        }
-                        button.whatsapp {
-                            background: #25d366;
-                        }
-                        button.whatsapp:hover {
-                            background: #20ba5a;
-                        }
-                        #slip-container {
-                            width: 100%;
-                            height: calc(100vh - 50px);
-                            border: none;
-                            margin-top: 50px;
-                            background: white;
-                        }
-                        @media print {
-                            #toolbar { display: none; }
-                            #slip-container { margin-top: 0; height: auto; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div id="toolbar">
-                        <button onclick="window.print()">
-                            <span>🖨️</span>
-                            <span>Print</span>
-                        </button>
-                        <button class="whatsapp" onclick="shareWhatsApp()">
-                            <span>📱</span>
-                            <span>Share on WhatsApp</span>
-                        </button>
-                    </div>
-                    <iframe id="slip-container" src="/print/${slipId}"></iframe>
 
-                    <script>
-                        const slipId = ${slipId};
-                        const mobileNumber = ${mobile ? `'${mobile}'` : 'null'};
-                        const billNo = ${bill ? `'${bill}'` : 'null'};
+            const html = '<!DOCTYPE html>' +
+                '<html><head>' +
+                '<title>Purchase Slip ' + slipId + '</title>' +
+                '<style>' +
+                '* { margin: 0; padding: 0; box-sizing: border-box; }' +
+                'body { background: #525252; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow: hidden; }' +
+                '#toolbar { position: fixed; top: 0; left: 0; right: 0; background: #323639; padding: 12px 20px; display: flex; gap: 12px; justify-content: center; align-items: center; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }' +
+                'button { background: #4a90e2; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px; }' +
+                'button:hover { background: #357abd; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }' +
+                'button:active { transform: translateY(0); }' +
+                'button.whatsapp { background: #25d366; }' +
+                'button.whatsapp:hover { background: #20ba5a; }' +
+                '#slip-container { width: 100%; height: calc(100vh - 50px); border: none; margin-top: 50px; background: white; }' +
+                '@media print { #toolbar { display: none; } #slip-container { margin-top: 0; height: auto; } }' +
+                '</style></head><body>' +
+                '<div id="toolbar">' +
+                '<button onclick="window.print()"><span>🖨️</span><span>Print</span></button>' +
+                '<button class="whatsapp" onclick="shareWhatsApp()"><span>📱</span><span>Share on WhatsApp</span></button>' +
+                '</div>' +
+                '<iframe id="slip-container" src="/print/' + slipId + '"></iframe>' +
+                '<scr' + 'ipt>' +
+                'const slipId = ' + slipId + ';' +
+                'const mobileNumber = ' + (mobile ? '"' + mobile + '"' : 'null') + ';' +
+                'const billNo = ' + (bill ? '"' + bill + '"' : 'null') + ';' +
+                'function shareWhatsApp() {' +
+                '  if (!mobileNumber || mobileNumber === "null" || mobileNumber.trim() === "") {' +
+                '    alert("No mobile number found for this slip.\\n\\nPlease add a mobile number in the slip details and try again.");' +
+                '    return;' +
+                '  }' +
+                '  const cleanMobile = mobileNumber.replace(/[^0-9]/g, "");' +
+                '  const whatsappNumber = cleanMobile.startsWith("91") ? cleanMobile : "91" + cleanMobile;' +
+                '  const message = encodeURIComponent("Purchase Slip #" + (billNo || slipId) + "\\n\\nView and print your purchase slip here:\\n" + window.location.origin + "/print/" + slipId);' +
+                '  window.open("https://wa.me/" + whatsappNumber + "?text=" + message, "_blank");' +
+                '}' +
+                'document.addEventListener("keydown", (e) => {' +
+                '  if (e.ctrlKey && e.key === "p") { e.preventDefault(); window.print(); }' +
+                '});' +
+                '</' + 'script></body></html>';
 
-                        function shareWhatsApp() {
-                            if (!mobileNumber || mobileNumber === 'null' || mobileNumber.trim() === '') {
-                                alert('No mobile number found for this slip.\\n\\nPlease add a mobile number in the slip details and try again.');
-                                return;
-                            }
-
-                            // Clean mobile number and construct WhatsApp Web URL
-                            const cleanMobile = mobileNumber.replace(/[^0-9]/g, '');
-                            const whatsappNumber = cleanMobile.startsWith('91') ? cleanMobile : '91' + cleanMobile;
-
-                            // Create WhatsApp message with slip details
-                            const message = encodeURIComponent(
-                                \`Purchase Slip #\${billNo || slipId}\\n\\n\` +
-                                \`View and print your purchase slip here:\\n\` +
-                                \`\${window.location.origin}/print/\${slipId}\`
-                            );
-
-                            // Open WhatsApp Web with pre-filled message
-                            window.open(\`https://wa.me/\${whatsappNumber}?text=\${message}\`, '_blank');
-                        }
-
-                        // Keyboard shortcuts
-                        document.addEventListener('keydown', (e) => {
-                            if (e.ctrlKey && e.key === 'p') {
-                                e.preventDefault();
-                                window.print();
-                            }
-                        });
-                    </script>
-                </body>
-                </html>
-            `);
+            printWindow.document.write(html);
             printWindow.document.close();
         }
 
