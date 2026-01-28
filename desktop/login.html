@@ -214,6 +214,19 @@
     </div>
 
     <script>
+        // Redirect to app if already logged in
+        const existingUser = localStorage.getItem('user');
+        if (existingUser) {
+            try {
+                const user = JSON.parse(existingUser);
+                if (user && user.username) {
+                    window.location.replace('/app');
+                }
+            } catch (e) {
+                localStorage.removeItem('user');
+            }
+        }
+
         let currentCaptcha = '';
 
         function generateCaptcha() {
@@ -262,7 +275,7 @@
 
                 if (result.success) {
                     localStorage.setItem('user', JSON.stringify(result.user));
-                    window.location.href = '/app';
+                    window.location.replace('/app');
                 } else {
                     showError(result.message || 'Invalid credentials');
                     generateCaptcha();
