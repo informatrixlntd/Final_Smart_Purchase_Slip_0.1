@@ -116,6 +116,11 @@ def app_page():
     """Serve the main application page"""
     return send_from_directory(desktop_folder, 'app.html')
 
+@app.route('/create')
+def create_slip():
+    """Serve the slip creation form"""
+    return send_from_directory(desktop_folder, 'index.html')
+
 @app.route('/assets/<path:filename>')
 def serve_assets(filename):
     """Serve static assets"""
