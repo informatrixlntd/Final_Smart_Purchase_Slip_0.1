@@ -37,6 +37,10 @@ try:
     from routes.slips import slips_bp
     from routes.auth import auth_bp
     print("[OK] Routes modules imported")
+
+    print("[INFO] Importing backup service...")
+    from scheduled_backup import start_backup_service
+    print("[OK] Backup service imported")
 except ImportError as e:
     print(f"[FATAL] Import error: {e}")
     print(f"[FATAL] Traceback:\n{traceback.format_exc()}")
@@ -93,10 +97,30 @@ except Exception as e:
     print("[WARNING] Continuing without database - some features may not work")
     # Don't exit - allow Flask to start so we can see error messages
 
+# Start automated backup service
+print("[INFO] Starting automated backup service...")
+try:
+    start_backup_service()
+    print("[OK] Automated backup service started")
+except Exception as e:
+    print(f"[WARNING] Failed to start backup service: {e}")
+    print("[INFO] Backups will not run automatically")
+
 @app.route('/')
 def index():
-    """Serve the main form page"""
-    return send_from_directory(desktop_folder, 'index.html')
+    """Serve the login page"""
+    return send_from_directory(desktop_folder, 'login.html')
+
+@app.route('/app')
+def app_page():
+    """Serve the main application page"""
+    return send_from_directory(desktop_folder, 'app.html')
+
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    """Serve static assets"""
+    assets_folder = os.path.join(desktop_folder if isinstance(desktop_folder, str) and not desktop_folder.startswith('..') else os.path.join(os.path.dirname(__file__), desktop_folder), 'assets')
+    return send_from_directory(assets_folder, filename)
 
 @app.route('/api/next-bill-no')
 def next_bill_no_route():
