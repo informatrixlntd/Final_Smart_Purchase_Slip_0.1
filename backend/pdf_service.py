@@ -130,7 +130,7 @@ def generate_purchase_slip_pdf(slip_id, force_regenerate=False):
         with open(template_path, 'r', encoding='utf-8') as f:
             template_content = f.read()
 
-        html_content = render_template_string(template_content, slip=slip, font_path=FONT_PATH)
+        html_content = render_template_string(template_content, slip=slip)
 
         html_bytes = html_content.encode('utf-8')
 
