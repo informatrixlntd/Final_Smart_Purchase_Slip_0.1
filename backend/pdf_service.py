@@ -2,6 +2,7 @@
 Centralized PDF Generation Service using xhtml2pdf
 Fast HTML-to-PDF conversion with template support
 Includes disk caching for optimal performance
+Supports Marathi (Devanagari) text with embedded Unicode font
 """
 import os
 import sys
@@ -10,6 +11,8 @@ from io import BytesIO
 from datetime import datetime
 from xhtml2pdf import pisa
 from flask import render_template
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -18,6 +21,31 @@ from backend.routes.slips import format_ist_datetime, calculate_payment_totals
 
 CACHE_DIR = os.path.join(os.path.dirname(__file__), '..', 'pdf_cache')
 os.makedirs(CACHE_DIR, exist_ok=True)
+
+FONT_PATH = os.path.join(os.path.dirname(__file__), 'static', 'fonts', 'NotoSansDevanagari-Regular.ttf')
+FONT_REGISTERED = False
+
+
+def register_devanagari_font():
+    """
+    Register Devanagari Unicode font with ReportLab
+    MUST be called BEFORE pisa.CreatePDF for Marathi text support
+    """
+    global FONT_REGISTERED
+
+    if FONT_REGISTERED:
+        return
+
+    try:
+        if not os.path.exists(FONT_PATH):
+            print(f"[WARNING] Font file not found: {FONT_PATH}")
+            return
+
+        pdfmetrics.registerFont(TTFont('NotoSansDevanagari', FONT_PATH))
+        FONT_REGISTERED = True
+        print(f"[OK] Devanagari font registered: {FONT_PATH}")
+    except Exception as e:
+        print(f"[ERROR] Failed to register Devanagari font: {e}")
 
 
 def get_cache_key(slip_id, slip_data):
@@ -95,17 +123,21 @@ def generate_purchase_slip_pdf(slip_id, force_regenerate=False):
 
         clear_old_cache_files(slip_id)
 
+        register_devanagari_font()
+
         template_path = os.path.join(os.path.dirname(__file__), 'templates', 'print_template_new.html')
 
         with open(template_path, 'r', encoding='utf-8') as f:
             template_content = f.read()
 
-        html_content = render_template_string(template_content, slip=slip)
+        html_content = render_template_string(template_content, slip=slip, font_path=FONT_PATH)
+
+        html_bytes = html_content.encode('utf-8')
 
         pdf_buffer = BytesIO()
 
         pisa_status = pisa.CreatePDF(
-            html_content,
+            html_bytes,
             dest=pdf_buffer,
             encoding='utf-8'
         )

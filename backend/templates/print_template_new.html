@@ -6,11 +6,17 @@
     <title>खरेदी पावती - {{ slip.bill_no }}</title>
 
 <style>
+    @font-face {
+        font-family: 'NotoSansDevanagari';
+        src: url('file:///{{ font_path }}');
+    }
+
     * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
-        font-size: 10pt; /* GLOBAL FONT SIZE */
+        font-size: 10pt;
+        font-family: 'NotoSansDevanagari', Arial, sans-serif;
     }
 
     /* STRICT A4 PAGE FITTING - ALWAYS ONE PAGE */
@@ -48,7 +54,7 @@
     }
 
     body {
-        font-family: Arial, sans-serif;
+        font-family: 'NotoSansDevanagari', Arial, sans-serif;
         line-height: 1.1;
         color: #000;
         background: #fff;
