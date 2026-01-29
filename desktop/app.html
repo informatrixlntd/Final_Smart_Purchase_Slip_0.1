@@ -673,65 +673,6 @@
                 background-color: transparent;
             }
         }
-
-        /* Fix scroll issues - ensure ONLY main content scrolls */
-        html, body {
-            overflow: hidden;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
-
-        .app-layout {
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .top-bar {
-            flex-shrink: 0;
-        }
-
-        .app-layout > div:last-child {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
-        }
-
-        .sidebar {
-            flex-shrink: 0;
-            overflow-y: auto;
-        }
-
-        .main-content {
-            flex: 1;
-            overflow-y: auto !important;
-            overflow-x: hidden;
-            height: 100%;
-            position: relative;
-        }
-
-        /* Remove any nested scroll containers */
-        .tab-content {
-            height: 100%;
-            overflow: visible;
-        }
-
-        /* Prevent UI freeze - ensure modals don't block pointer events */
-        .modal-backdrop {
-            pointer-events: none;
-        }
-
-        .modal {
-            pointer-events: auto;
-        }
-
-        /* Ensure tables within scrollable containers work properly */
-        .table-responsive {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
     </style>
 </head>
 <body>
