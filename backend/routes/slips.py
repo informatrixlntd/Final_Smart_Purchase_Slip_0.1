@@ -9,12 +9,22 @@ from database import get_db_connection, get_next_bill_no
 from datetime import datetime
 from pytz import timezone
 
+# Import centralized PDF and WhatsApp services
 try:
-    import pdfkit
-    PDFKIT_AVAILABLE = True
-except ImportError:
-    PDFKIT_AVAILABLE = False
-    print("Warning: pdfkit not available. PDF generation will be disabled.")
+    from pdf_service import generate_purchase_slip_pdf, get_pdf_filename
+    PDF_SERVICE_AVAILABLE = True
+    print("[OK] Centralized PDF service loaded successfully")
+except ImportError as e:
+    PDF_SERVICE_AVAILABLE = False
+    print(f"[WARNING] Centralized PDF service not available: {e}")
+
+try:
+    from whatsapp_service import send_pdf_via_whatsapp, is_whatsapp_configured, get_configuration_instructions
+    WHATSAPP_SERVICE_AVAILABLE = True
+    print("[OK] WhatsApp service loaded successfully")
+except ImportError as e:
+    WHATSAPP_SERVICE_AVAILABLE = False
+    print(f"[WARNING] WhatsApp service not available: {e}")
 
 slips_bp = Blueprint('slips', __name__)
 
@@ -613,86 +623,66 @@ def delete_slip(slip_id):
 
 @slips_bp.route('/api/slip/<int:slip_id>/pdf', methods=['GET'])
 def generate_slip_pdf(slip_id):
-    """Generate PDF for a purchase slip"""
-    if not PDFKIT_AVAILABLE:
+    """
+    Generate PDF for a purchase slip using centralized PDF service
+    Returns PDF file for download or browser display
+    """
+    if not PDF_SERVICE_AVAILABLE:
         return jsonify({
             'success': False,
-            'message': 'PDF generation is not available. Please install wkhtmltopdf.'
+            'message': 'PDF generation service is not available. Please install WeasyPrint.'
         }), 500
 
-    conn = None
-    cursor = None
     try:
+        print(f"[INFO] Generating PDF for slip ID: {slip_id}")
+
+        # Generate PDF using centralized service
+        pdf_bytes = generate_purchase_slip_pdf(slip_id)
+
+        # Get slip data for filename
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-
-        cursor.execute('SELECT * FROM purchase_slips WHERE id = %s', (slip_id,))
+        cursor.execute('SELECT party_name, bill_no FROM purchase_slips WHERE id = %s', (slip_id,))
         slip = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
-        if not slip:
-            return jsonify({'success': False, 'message': 'Slip not found'}), 404
+        if slip:
+            filename = get_pdf_filename(slip)
+        else:
+            filename = f'purchase_slip_{slip_id}.pdf'
 
-        # Format datetime fields
-        datetime_fields = ['date', 'instalment_1_date', 'instalment_2_date',
-                          'instalment_3_date', 'instalment_4_date', 'instalment_5_date']
-        for field in datetime_fields:
-            if slip.get(field):
-                slip[f'{field}_formatted'] = format_ist_datetime(slip[field])
-
-        # Render HTML
-        html_content = render_template('print_template.html', slip=slip)
-
-        # Generate PDF
-        pdf_options = {
-            'page-size': 'A4',
-            'margin-top': '10mm',
-            'margin-right': '10mm',
-            'margin-bottom': '10mm',
-            'margin-left': '10mm',
-            'encoding': 'UTF-8',
-            'no-outline': None,
-            'enable-local-file-access': None
-        }
-
-        # Create temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_pdf:
-            pdfkit.from_string(html_content, temp_pdf.name, options=pdf_options)
-            temp_pdf_path = temp_pdf.name
-
-        # Send file and schedule cleanup
-        response = send_file(
-            temp_pdf_path,
+        # Return PDF file
+        return send_file(
+            pdf_bytes,
             mimetype='application/pdf',
-            as_attachment=True,
-            download_name=f'purchase_slip_{slip_id}.pdf'
+            as_attachment=False,  # Display in browser, not download
+            download_name=filename
         )
 
-        # Schedule temp file cleanup after response
-        @response.call_on_close
-        def cleanup():
-            try:
-                if os.path.exists(temp_pdf_path):
-                    os.unlink(temp_pdf_path)
-            except:
-                pass
-
-        return response
-
-    except Exception as e:
-        print(f"Error generating PDF: {e}")
+    except ValueError as e:
+        print(f"[ERROR] Slip not found: {e}")
         return jsonify({
             'success': False,
-            'message': str(e)
-        }), 400
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
+            'message': 'Slip not found'
+        }), 404
+
+    except Exception as e:
+        print(f"[ERROR] Error generating PDF: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Failed to generate PDF: {str(e)}'
+        }), 500
 
 @slips_bp.route('/print/<int:slip_id>')
 def print_slip(slip_id):
-    """Render print template for a slip with calculated amounts"""
+    """
+    Render print template for a slip with calculated amounts
+    NOTE: This route is kept for backward compatibility but should not be used
+    New workflow: Use /api/slip/<id>/pdf to generate PDF directly
+    """
     conn = None
     cursor = None
     try:
@@ -727,6 +717,140 @@ def print_slip(slip_id):
     except Exception as e:
         print(f"Error rendering print: {e}")
         return str(e), 400
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+# ==================== WHATSAPP SHARING ====================
+
+@slips_bp.route('/api/whatsapp/config', methods=['GET'])
+def get_whatsapp_config():
+    """Get WhatsApp Business API configuration status and instructions"""
+    if not WHATSAPP_SERVICE_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'message': 'WhatsApp service is not available'
+        }), 500
+
+    try:
+        instructions = get_configuration_instructions()
+        return jsonify({
+            'success': True,
+            'configured': instructions['configured'],
+            'instructions': instructions
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@slips_bp.route('/api/slip/<int:slip_id>/share/whatsapp', methods=['POST'])
+def share_slip_via_whatsapp(slip_id):
+    """
+    Share purchase slip PDF via WhatsApp Business API
+
+    Request body:
+    {
+        "recipient_type": "party" or "broker",
+        "recipient_number": "919876543210" (optional, overrides party/broker number)
+    }
+    """
+    if not WHATSAPP_SERVICE_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'message': 'WhatsApp service is not available. Please install requests library.'
+        }), 500
+
+    if not is_whatsapp_configured():
+        return jsonify({
+            'success': False,
+            'message': 'WhatsApp Business API is not configured. Please add credentials to config.json',
+            'instructions': get_configuration_instructions()
+        }), 400
+
+    conn = None
+    cursor = None
+
+    try:
+        data = request.json or {}
+        recipient_type = data.get('recipient_type', 'party')  # 'party' or 'broker'
+        recipient_number_override = data.get('recipient_number')
+
+        # Fetch slip data
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute('SELECT * FROM purchase_slips WHERE id = %s', (slip_id,))
+        slip = cursor.fetchone()
+
+        if not slip:
+            return jsonify({
+                'success': False,
+                'message': 'Slip not found'
+            }), 404
+
+        # Determine recipient number
+        if recipient_number_override:
+            recipient_number = recipient_number_override
+        elif recipient_type == 'party':
+            recipient_number = slip.get('mobile_number')
+            if not recipient_number:
+                return jsonify({
+                    'success': False,
+                    'message': 'Party mobile number not found in slip'
+                }), 400
+        elif recipient_type == 'broker':
+            # Broker number should be stored in slip - you may need to add this field
+            recipient_number = slip.get('broker_mobile_number')
+            if not recipient_number:
+                return jsonify({
+                    'success': False,
+                    'message': 'Broker mobile number not found. Please add broker mobile number to the slip.'
+                }), 400
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid recipient_type. Must be "party" or "broker"'
+            }), 400
+
+        # Generate PDF URL (you need to host the PDF on a publicly accessible URL)
+        # For now, we'll return an error asking for public URL
+        # In production, you'd upload the PDF to S3, Azure Blob, or similar service
+
+        # TODO: Implement PDF hosting service
+        # For now, return instructions
+        return jsonify({
+            'success': False,
+            'message': 'WhatsApp sharing requires PDF to be hosted on a public URL. This feature is coming soon.',
+            'note': 'To enable WhatsApp sharing, you need to:',
+            'instructions': [
+                '1. Host generated PDFs on a publicly accessible URL (S3, Azure Blob, etc.)',
+                '2. Update this endpoint to upload PDF and get public URL',
+                '3. Call send_pdf_via_whatsapp() with the public URL'
+            ],
+            'workaround': 'For now, download the PDF and share manually via WhatsApp'
+        }), 501  # 501 Not Implemented
+
+        # FUTURE IMPLEMENTATION:
+        # pdf_url = upload_pdf_to_storage(slip_id)  # Upload to S3/Azure/etc
+        # message_text = f"Please find the attached Purchase Slip for {slip.get('party_name')}"
+        # result = send_pdf_via_whatsapp(recipient_number, pdf_url, message_text)
+        # return jsonify(result), 200
+
+    except Exception as e:
+        print(f"[ERROR] Error sharing via WhatsApp: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Failed to share via WhatsApp: {str(e)}'
+        }), 500
+
     finally:
         if cursor:
             cursor.close()

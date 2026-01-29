@@ -199,6 +199,13 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
 
+        // Prevent double submission
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+        }
+
         const formData = new FormData(form);
         const data = {};
 
@@ -238,22 +245,31 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
 
             if (result.success) {
-                alert('Purchase slip saved successfully!');
-                window.open(`/print/${result.slip_id}`, '_blank');
-                form.reset();
-                const now = new Date();
-                const istOffset = 5.5 * 60 * 60 * 1000;
-                const istTime = new Date(now.getTime() + istOffset);
-                dateInput.value = istTime.toISOString().slice(0, 16);
-                fetchNextBillNo();
-                calculateFields();
+                // NEW WORKFLOW: Save & Print
+                // 1. Generate and open PDF in new tab
+                window.open(`/api/slip/${result.slip_id}/pdf`, '_blank');
+
+                // 2. Store newly created slip ID for highlighting
+                sessionStorage.setItem('newlyCreatedSlipId', result.slip_id);
+
+                // 3. Show success message
+                alert('Purchase slip saved successfully! Redirecting to View All Slips...');
+
+                // 4. Redirect to View All Slips (app page)
+                setTimeout(() => {
+                    window.location.href = '/app';
+                }, 500);
             } else {
-                alert('Error saving slip: ' + result.message);
+                throw new Error(result.message || 'Failed to save slip');
             }
         } catch (error) {
-            console.error('Error:', error);
-            if (error.message && !error.message.includes('setting \'value\'')) {
-                alert('Error saving purchase slip: ' + error.message);
+            console.error('[ERROR] Error saving slip:', error);
+            alert('Error saving purchase slip: ' + error.message);
+
+            // Re-enable submit button
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save & Print';
             }
         }
     });
