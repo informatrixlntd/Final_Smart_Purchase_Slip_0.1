@@ -11,7 +11,7 @@ from pytz import timezone
 
 # Import centralized PDF and WhatsApp services
 try:
-    from pdf_service import generate_purchase_slip_pdf, get_pdf_filename
+    from pdf_service import generate_purchase_slip_pdf, get_pdf_filename, invalidate_cache
     PDF_SERVICE_AVAILABLE = True
     print("[OK] Centralized PDF service loaded successfully")
 except ImportError as e:
@@ -573,6 +573,13 @@ def update_slip(slip_id):
         ))
 
         conn.commit()
+
+        # Invalidate PDF cache after update
+        if PDF_SERVICE_AVAILABLE:
+            try:
+                invalidate_cache(slip_id)
+            except Exception as e:
+                print(f"[WARNING] Could not invalidate cache: {e}")
 
         return jsonify({
             'success': True,

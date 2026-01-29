@@ -3,5 +3,5 @@ flask-cors>=4.0.0
 mysql-connector-python>=8.0.0
 pytz>=2024.1
 pyinstaller>=6.0.0
-weasyprint>=62.0
+reportlab>=4.0.0
 requests>=2.31.0

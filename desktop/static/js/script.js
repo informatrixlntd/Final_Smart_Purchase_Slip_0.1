@@ -245,20 +245,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
 
             if (result.success) {
-                // NEW WORKFLOW: Save & Print
-                // 1. Generate and open PDF in new tab
-                window.open(`/api/slip/${result.slip_id}/pdf`, '_blank');
-
-                // 2. Store newly created slip ID for highlighting
+                // NEW WORKFLOW: Save only (no automatic PDF)
+                // 1. Store newly created slip ID for highlighting
                 sessionStorage.setItem('newlyCreatedSlipId', result.slip_id);
 
-                // 3. Show success message
-                alert('Purchase slip saved successfully! Redirecting to View All Slips...');
-
-                // 4. Redirect to View All Slips (app page)
-                setTimeout(() => {
-                    window.location.href = '/app';
-                }, 500);
+                // 2. Redirect to View All Slips
+                // User can manually print from there if needed
+                window.location.href = '/app#view';
             } else {
                 throw new Error(result.message || 'Failed to save slip');
             }
@@ -269,7 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Re-enable submit button
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Save & Print';
+                submitBtn.textContent = 'Save';
             }
         }
     });

@@ -674,16 +674,48 @@
             }
         }
 
-        /* Fix scroll issues - ensure body and main content can scroll properly */
+        /* Fix scroll issues - ensure ONLY main content scrolls */
         html, body {
-            overflow-x: hidden;
-            overflow-y: auto !important;
+            overflow: hidden;
             height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .app-layout {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .top-bar {
+            flex-shrink: 0;
+        }
+
+        .app-layout > div:last-child {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            flex-shrink: 0;
+            overflow-y: auto;
         }
 
         .main-content {
+            flex: 1;
             overflow-y: auto !important;
+            overflow-x: hidden;
             height: 100%;
+            position: relative;
+        }
+
+        /* Remove any nested scroll containers */
+        .tab-content {
+            height: 100%;
+            overflow: visible;
         }
 
         /* Prevent UI freeze - ensure modals don't block pointer events */
@@ -693,6 +725,12 @@
 
         .modal {
             pointer-events: auto;
+        }
+
+        /* Ensure tables within scrollable containers work properly */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
     </style>
 </head>
@@ -881,7 +919,13 @@
 
             <!-- CREATE TAB -->
             <div id="createTab" class="tab-content">
-                <iframe src="/create" style="width:100%; height:85vh; border:none; background:white; border-radius:10px;"></iframe>
+                <div id="createFormContainer" style="width:100%; background:white; border-radius:10px; padding:20px;">
+                    <div class="text-center py-5">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading form...</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
         <!-- VIEW TAB -->
@@ -1629,6 +1673,43 @@
             if (addUserBtn) addUserBtn.style.display = 'none';
         }
 
+        let createFormLoaded = false;
+
+        async function loadCreateForm() {
+            if (createFormLoaded) return;
+
+            const container = document.getElementById('createFormContainer');
+
+            try {
+                const response = await fetch('/create');
+                const html = await response.text();
+
+                // Extract form content from the full HTML page
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const formContent = doc.querySelector('.container');
+
+                if (formContent) {
+                    container.innerHTML = '';
+                    container.appendChild(formContent);
+
+                    // Load and execute script.js for form functionality
+                    const script = document.createElement('script');
+                    script.src = '/static/js/script.js';
+                    script.onload = () => {
+                        console.log('[OK] Create form loaded successfully');
+                        createFormLoaded = true;
+                    };
+                    document.body.appendChild(script);
+                } else {
+                    container.innerHTML = '<div class="alert alert-danger">Failed to load form</div>';
+                }
+            } catch (error) {
+                console.error('[ERROR] Failed to load create form:', error);
+                container.innerHTML = '<div class="alert alert-danger">Error loading form. Please refresh the page.</div>';
+            }
+        }
+
         function switchTab(tab) {
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -1640,6 +1721,7 @@
             } else if (tab === 'create') {
                 document.querySelector('.nav-item:nth-child(2)').classList.add('active');
                 document.getElementById('createTab').classList.add('active');
+                loadCreateForm();
             } else if (tab === 'view') {
                 document.querySelector('.nav-item:nth-child(3)').classList.add('active');
                 document.getElementById('viewTab').classList.add('active');
@@ -1649,6 +1731,9 @@
                 document.getElementById('usersTab').classList.add('active');
                 loadAllUsers();
             }
+
+            // Update URL hash without reload
+            window.location.hash = tab;
 
             // Auto-close sidebar on mobile after navigation
             if (window.innerWidth <= 768) {
@@ -2755,9 +2840,25 @@
             }).join('');
         }
 
-        // Load dashboard on page load
+        // Handle hash-based navigation
+        function handleHashNavigation() {
+            const hash = window.location.hash.substring(1); // Remove the '#'
+            if (hash && ['dashboard', 'create', 'view', 'users'].includes(hash)) {
+                switchTab(hash);
+            } else {
+                // Default to dashboard
+                loadDashboardData();
+            }
+        }
+
+        // Load dashboard on page load and handle hash navigation
         window.addEventListener('DOMContentLoaded', () => {
-            loadDashboardData();
+            handleHashNavigation();
+        });
+
+        // Listen for hash changes
+        window.addEventListener('hashchange', () => {
+            handleHashNavigation();
         });
 
     </script>
