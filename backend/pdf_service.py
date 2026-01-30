@@ -10,7 +10,6 @@ import hashlib
 from io import BytesIO
 from datetime import datetime
 from xhtml2pdf import pisa
-from flask import render_template
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 

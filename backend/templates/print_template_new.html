@@ -267,64 +267,64 @@
     <div class="slip-container">
         <div class="header">
             <!-- <img src="/desktop/assets/spslogo.png" alt="Logo" class="header-logo" onerror="this.style.display='none'"> -->
-        <div class="slip-title" style="font-size: 12pt;">{{ slip.document_type or 'PURCHASE SLIP' }}</div>
-            
+        <div class="slip-title" style="font-size: 12pt;">Purchase Slip</div>
+
         </div>
 
         <div>
-        <span><strong>Company / Mill Name:</strong> {{ slip.company_name or 'COMPANY NAME' }}</span><br>
-            <span><strong>Address:</strong> {{ slip.company_address or 'Company Address' }}</span>
+        <span><strong>कंपनी / मिल नाव:</strong> {{ slip.company_name or '-' }}</span><br>
+            <span><strong>पत्ता:</strong> {{ slip.company_address or '-' }}</span>
             </div>
             <br>
         <div class="info-row">
-            <span><strong>Bill No. / Invoice No.:</strong> #{{ slip.bill_no }}</span>
-            <span><strong>Date:</strong> {{ slip.date_formatted or slip.date }}</span>
-            <span><strong>Vehicle No:</strong> {{ slip.vehicle_no or '-' }}</span>
+            <span><strong>बिल क्रमांक / इन्व्हॉईस क्रमांक:</strong> #{{ slip.bill_no }}</span>
+            <span><strong>दिनांक:</strong> {{ slip.date_formatted or slip.date }}</span>
+            <span><strong>वाहन क्रमांक:</strong> {{ slip.vehicle_no or '-' }}</span>
         </div>
 
-        <div class="section-title">Party Details</div>
+        <div class="section-title">पार्टी डिटेल्स</div>
         <table>
             <tr>
-                <th style="width: 25%;">Party Name</th>
+                <th style="width: 25%;">पार्टी नाव</th>
                 <td style="width: 25%;">{{ slip.party_name or '-' }}</td>
-                <th style="width: 25%;">Ticket No</th>
+                <th style="width: 25%;">तिकेट क्रमांक</th>
                 <td style="width: 25%;">{{ slip.ticket_no or '-' }}</td>
             </tr>
             <tr>
-                <th>Material</th>
+                <th>मटेरियल</th>
                 <td>{{ slip.material_name or '-' }}</td>
-                <th>Broker</th>
+                <th>दलाल</th>
                 <td>{{ slip.broker or '-' }}</td>
             </tr>
             <tr>
-                <th>Terms of Delivery</th>
+                <th>डिलिव्हरी अटी</th>
                 <td>{{ slip.terms_of_delivery or '-' }}</td>
-                <th>Sup. Inv. No</th>
+                <th>सप्लायर इनव्हॉईस क्रमांक</th>
                 <td>{{ slip.sup_inv_no or '-' }}</td>
             </tr>
             <tr>
-                <th>GST No</th>
+                <th>GST क्रमांक</th>
                 <td colspan="3">{{ slip.gst_no or '-' }}</td>
             </tr>
             <tr>
-                <th>Mobile Number</th>
+                <th>मोबाईल नंबर</th>
                 <td colspan="3">{{ slip.mobile_number or '-' }}</td>
             </tr>
         </table>
 
-        <div class="section-title">Weight & Rate Details</div>
+        <div class="section-title">वजन व दर तपशील</div>
         <table>
             <tr>
-                <th>Bags</th>
-                <th>Avg Bag Weight</th>
-                <th>Net Weight (KG)</th>
-                <th>Gunny Weight (KG)</th>
-                <th>Final Weight (KG)</th>
-                <th>Weight (Quintal)</th>
-                <th>Weight (Khandi)</th>
-                <th>Rate Basis</th>
-                <th>Rate Value</th>
-                <th>Amount (₹)</th>
+                <th>बॅग्स</th>
+                <th>सरासरी बॅग्स वजन</th>
+                <th>निव्वळ वजन (KG)</th>
+                <th>बोरा वजन (KG)</th>
+                <th>अंतिम वजन (KG)</th>
+                <th>वजन (क्विंटल)</th>
+                <th>वजन (खंडी)</th>
+                <th>रेट बेसिस</th>
+                <th>रेट</th>
+                <th>रक्कम (₹)</th>
             </tr>
             <tr>
                 <td class="text-center">{{ "%.0f"|format(slip.bags or 0) }}</td>
@@ -340,21 +340,21 @@
             </tr>
         </table>
 
-        <div class="section-title">Deductions</div>
+        <div class="section-title">कपात</div>
         <table>
             <thead>
                 <tr>
                     <!-- <th>Category</th> -->
-                    <th>Deduction Type</th>
-                    <th>Rate/Percentage</th>
-                    <th class="text-right">Amount (₹)</th>
+                    <th>कपातीचा प्रकार</th>
+                    <th>दर / टक्केवारी</th>
+                    <th class="text-right">रक्कम (₹)</th>
                 </tr>
             </thead>
             <tbody>
                 {% if slip.bank_commission and slip.bank_commission > 0 %}
                 <tr>
                     <!-- <td>Direct ₹</td> -->
-                    <td>Bank Commission</td>
+                    <td>बँक कमिशन</td>
                     <td>-</td>
                     <td class="text-right">{{ "%.2f"|format(slip.bank_commission) }}</td>
                 </tr>
@@ -363,7 +363,7 @@
                 {% if slip.postage and slip.postage > 0 %}
                 <tr>
                     <!-- <td>Direct ₹</td> -->
-                    <td>Postage</td>
+                    <td>टपाल खर्च</td>
                     <td>-</td>
                     <td class="text-right">{{ "%.2f"|format(slip.postage) }}</td>
                 </tr>
@@ -372,7 +372,7 @@
                 {% if slip.freight and slip.freight > 0 %}
                 <tr>
                     <!-- <td>Direct ₹</td> -->
-                    <td>Freight</td>
+                    <td>वाहतूक</td>
                     <td>-</td>
                     <td class="text-right">{{ "%.2f"|format(slip.freight) }}</td>
                 </tr>
@@ -381,7 +381,7 @@
                 {% if slip.rate_diff and slip.rate_diff > 0 %}
                 <tr>
                     <!-- <td>Direct ₹</td> -->
-                    <td>Rate Difference</td>
+                    <td>दर फरक</td>
                     <td>-</td>
                     <td class="text-right">{{ "%.2f"|format(slip.rate_diff) }}</td>
                 </tr>
@@ -390,7 +390,7 @@
                 {% if slip.quality_diff and slip.quality_diff > 0 %}
                 <tr>
                     <!-- <td>Direct ₹</td> -->
-                    <td>Quality Difference{% if slip.quality_diff_comment %}<br><small>({{ slip.quality_diff_comment }})</small>{% endif %}</td>
+                    <td>गुणवत्ता फरक{% if slip.quality_diff_comment %}<br><small>({{ slip.quality_diff_comment }})</small>{% endif %}</td>
                     <td>-</td>
                     <td class="text-right">{{ "%.2f"|format(slip.quality_diff) }}</td>
                 </tr>
@@ -399,7 +399,7 @@
                 {% if slip.moisture_ded and slip.moisture_ded > 0 %}
 <tr>
     <td>
-        Moisture Deduction
+        ओलावा कपात
         {% if slip.moisture_ded_comment %}
             <br><small>({{ slip.moisture_ded_comment }})</small>
         {% endif %}
@@ -430,7 +430,7 @@
                 {% if slip.batav and slip.batav > 0 %}
                 <tr>
                     <!-- <td>Percentage</td> -->
-                    <td>Batav</td>
+                    <td>बटावं</td>
                     <td>{{ "%.2f"|format(slip.batav_percent) }}%</td>
                     <td class="text-right">{{ "%.2f"|format(slip.batav) }}</td>
                 </tr>
@@ -439,7 +439,7 @@
                 {% if slip.dalali and slip.dalali > 0 %}
                 <tr>
                     <!-- <td>Formula</td> -->
-                    <td>Dalali</td>
+                    <td>दलाली</td>
                     <td>₹{{ "%.2f"|format(slip.dalali_rate) }}/100 KG</td>
                     <td class="text-right">{{ "%.2f"|format(slip.dalali) }}</td>
                 </tr>
@@ -448,14 +448,14 @@
                 {% if slip.hammali and slip.hammali > 0 %}
                 <tr>
                     <!-- <td>Formula</td> -->
-                    <td>Hamali</td>
+                    <td>हमाली</td>
                     <td>₹{{ "%.2f"|format(slip.hammali_rate) }}/100 KG</td>
                     <td class="text-right">{{ "%.2f"|format(slip.hammali) }}</td>
                 </tr>
                 {% endif %}
 
                 <tr class="total-row">
-                    <td colspan="2"><strong>Total Deductions</strong></td>
+                    <td colspan="2"><strong>एकूण कपात</strong></td>
                     <td class="text-right"><strong>{{ "%.2f"|format(slip.total_deduction) }}</strong></td>
                 </tr>
             </tbody>
@@ -463,31 +463,31 @@
 
         <div class="final-amounts">
             <div>
-                <span>Gross Amount:</span>
+                <span>एकूण रक्कम:</span>
                 <span>₹ {{ "%.2f"|format(slip.total_purchase_amount) }}</span>
             </div>
             <div>
-                <span>Total Deductions:</span>
+                <span>एकूण कपात:</span>
                 <span>₹ {{ "%.2f"|format(slip.total_deduction) }}</span>
             </div>
             <div class="total-payable">
-                <span>NET PAYABLE AMOUNT:</span>
+                <span>निव्वळ देय रक्कम:</span>
                 <span>₹ {{ "%.2f"|format(slip.payable_amount) }}</span>
             </div>
         </div>
 
-        <div class="section-title" style="background: #2e7d32; margin-top: 15px;">💰 PAYMENT SUMMARY</div>
+        <div class="section-title" style="background: #2e7d32; margin-top: 15px;">💰 देयक सारांश</div>
         <table style="border: 2px solid #2e7d32; background: #e8f5e9;">
             <tr style="font-size: 10pt;">
-                <td style="font-weight: bold; width: 60%;">Payable Amount:</td>
+                <td style="font-weight: bold; width: 60%;">देय रक्कम:</td>
                 <td class="text-right" style="font-weight: bold;">₹ {{ "%.2f"|format(slip.payable_amount or 0) }}</td>
             </tr>
             <tr style="font-size: 10pt;">
-                <td style="font-weight: bold;">Total Paid Amount:</td>
+                <td style="font-weight: bold;">एकूण दिलेली रक्कम:</td>
                 <td class="text-right" style="font-weight: bold;">₹ {{ "%.2f"|format(slip.total_paid_amount or 0) }}</td>
             </tr>
             <tr style="font-size: 11pt; background: #c8e6c9;">
-                <td style="font-weight: bold;">Balance Amount:</td>
+                <td style="font-weight: bold;">शिल्लक रक्कम:</td>
                 <td class="text-right" style="font-weight: bold; color: #1b5e20;">₹ {{ "%.2f"|format(slip.balance_amount or 0) }}</td>
             </tr>
         </table>
@@ -508,16 +508,16 @@
 
         {% set has_instalments = slip.instalment_1_date or slip.instalment_1_amount or slip.instalment_1_comment or slip.instalment_2_date or slip.instalment_2_amount or slip.instalment_2_comment or slip.instalment_3_date or slip.instalment_3_amount or slip.instalment_3_comment or slip.instalment_4_date or slip.instalment_4_amount or slip.instalment_4_comment or slip.instalment_5_date or slip.instalment_5_amount or slip.instalment_5_comment %}
         {% if has_instalments %}
-        <div class="section-title">Payment Instalments</div>
+        <div class="section-title">हप्ते तपशील</div>
         <table class="installments-table">
             <thead>
                 <tr>
-                    <th style="width: 6%;">Sr</th>
-                    <th style="width: 18%;">Date</th>
-                    <th style="width: 18%;">Amount</th>
-                    <th style="width: 16%;">Method</th>
-                    <th style="width: 20%;">Bank Account</th>
-                    <th style="width: 22%;">Comment</th>
+                    <th style="width: 6%;">क्र.</th>
+                    <th style="width: 18%;">दिनांक</th>
+                    <th style="width: 18%;">रक्कम</th>
+                    <th style="width: 16%;">पद्धत</th>
+                    <th style="width: 20%;">बँक खाते</th>
+                    <th style="width: 22%;">टिप्पणी</th>
                 </tr>
             </thead>
             <tbody>
@@ -549,7 +549,7 @@
 
         {% if slip.paddy_unloading_godown %}
         <div class="field-group">
-            <div class="field-group-title">Paddy Unloading Godown</div>
+            <div class="field-group-title">धान उतार गोदाम</div>
             <div style="font-size: 8pt; line-height: 1.3;">
                 {{ slip.paddy_unloading_godown }}
             </div>
@@ -559,11 +559,11 @@
         <div class="footer">
             <div class="signature">
                 <div style="margin-bottom:15px;"></div>
-                <div class="signature-line">Prepared By<br>{{ slip.prepared_by or '_________________' }}</div>
+                <div class="signature-line">तयार केले<br>{{ slip.prepared_by or '_________________' }}</div>
             </div>
             <div class="signature">
                 <div style="margin-bottom:15px;"></div>
-                <div class="signature-line">Authorized Signatory<br>{{ slip.authorised_sign or '_________________' }}</div>
+                <div class="signature-line">अधिकृत स्वाक्षरी<br>{{ slip.authorised_sign or '_________________' }}</div>
             </div>
         </div>
     </div>

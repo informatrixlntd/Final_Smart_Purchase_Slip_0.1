@@ -279,7 +279,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    calculateCalculatedRate();
     calculateFields();
 
     // ===== DYNAMIC GODOWN DROPDOWN =====
