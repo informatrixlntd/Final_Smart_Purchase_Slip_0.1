@@ -1617,7 +1617,14 @@
         let createFormLoaded = false;
 
         async function loadCreateForm() {
-            if (createFormLoaded) return;
+            if (createFormLoaded) {
+                console.log('[INFO] Form already loaded, re-initializing...');
+                // Re-initialize the form if it's already loaded
+                if (typeof window.initializePurchaseForm === 'function') {
+                    window.initializePurchaseForm();
+                }
+                return;
+            }
 
             const container = document.getElementById('createFormContainer');
 
@@ -1638,6 +1645,14 @@
                     const script = document.createElement('script');
                     script.src = '/static/js/script.js';
                     script.onload = () => {
+                        console.log('[OK] script.js loaded');
+                        // Call initialization function after script loads
+                        if (typeof window.initializePurchaseForm === 'function') {
+                            console.log('[OK] Calling initializePurchaseForm()...');
+                            window.initializePurchaseForm();
+                        } else {
+                            console.error('[ERROR] initializePurchaseForm function not found!');
+                        }
                         console.log('[OK] Create form loaded successfully');
                         createFormLoaded = true;
                     };
