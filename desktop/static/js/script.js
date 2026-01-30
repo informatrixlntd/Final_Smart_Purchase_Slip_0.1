@@ -64,10 +64,28 @@ window.handleSaveGodown = function() {
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ DOMContentLoaded event fired');
+    console.log('🔍 Initializing Create Purchase Slip form...');
+
     const form = document.getElementById('purchaseForm');
     const dateInput = document.getElementById('date');
     const billNoInput = document.getElementById('bill_no');
     const clearBtn = document.getElementById('clearBtn');
+
+    // Critical null checks
+    if (!form) {
+        console.error('❌ CRITICAL: purchaseForm not found!');
+        return;
+    }
+    if (!dateInput) {
+        console.error('❌ CRITICAL: date input not found!');
+        return;
+    }
+    if (!billNoInput) {
+        console.error('❌ CRITICAL: bill_no input not found!');
+        return;
+    }
+
+    console.log('✅ All critical elements found');
 
     const bags = document.getElementById('bags');
     const netWeightKg = document.getElementById('net_weight_kg');
@@ -96,25 +114,44 @@ document.addEventListener('DOMContentLoaded', function() {
     const payableAmount = document.getElementById('payable_amount');
     const paymentAmount = document.getElementById('payment_amount');
 
+    // Auto-fill today's date in IST
+    console.log('📅 Setting today\'s date...');
     const now = new Date();
     const istOffset = 5.5 * 60 * 60 * 1000;
     const istTime = new Date(now.getTime() + istOffset);
-    dateInput.value = istTime.toISOString().slice(0, 16);
+    const formattedDate = istTime.toISOString().slice(0, 16);
+    dateInput.value = formattedDate;
+    console.log('✅ Date set to:', formattedDate);
+
+    // Fetch next bill number
+    console.log('🔢 Fetching next bill number...');
     fetchNextBillNo();
 
     function fetchNextBillNo() {
+        console.log('📡 API Call: GET /api/next-bill-no');
         fetch('/api/next-bill-no')
-            .then(response => response.json())
+            .then(response => {
+                console.log('📨 Response status:', response.status);
+                return response.json();
+            })
             .then(data => {
+                console.log('📋 Received bill number:', data.bill_no);
                 billNoInput.value = data.bill_no;
+                console.log('✅ Bill number set successfully');
             })
             .catch(error => {
-                console.error('Error fetching bill number:', error);
+                console.error('❌ Error fetching bill number:', error);
                 billNoInput.value = '1';
+                console.log('⚠️ Using fallback bill number: 1');
             });
     }
 
     function calculateWeightFields() {
+        if (!netWeightKg || !gunnyWeightKg || !bags || !finalWeightKg || !weightQuintal || !weightKhandi || !avgBagWeight) {
+            console.warn('⚠️ calculateWeightFields: Some elements not found');
+            return { finalKg: 0, quintal: 0, khandi: 0 };
+        }
+
         const netKg = parseFloat(netWeightKg.value) || 0;
         const gunnyKg = parseFloat(gunnyWeightKg.value) || 0;
         const bagsVal = parseFloat(bags.value) || 0;
@@ -128,6 +165,8 @@ document.addEventListener('DOMContentLoaded', function() {
         weightQuintal.value = quintal.toFixed(3);
         weightKhandi.value = khandi.toFixed(3);
         avgBagWeight.value = avgBag.toFixed(2);
+
+        console.log('⚖️ Weight calculated:', { netKg, gunnyKg, finalKg, quintal, khandi, avgBag });
 
         return { finalKg, quintal, khandi };
     }
@@ -149,10 +188,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function calculateFields() {
+        console.log('🔢 calculateFields() called');
+
+        if (!rateBasis || !weightQuintal || !weightKhandi) {
+            console.warn('⚠️ calculateFields: Required elements missing');
+            return;
+        }
+
         const totalAmount = calculateTotalPurchaseAmount();
         const rateBasisVal = rateBasis.value;
         const quintal = parseFloat(weightQuintal.value) || 0;
         const khandi = parseFloat(weightKhandi.value) || 0;
+
+        console.log('💰 Total Amount:', totalAmount, '| Basis:', rateBasisVal);
 
         const bankCommissionVal = parseFloat(bankCommission.value) || 0;
         const postageVal = parseFloat(postage.value) || 0;
@@ -186,15 +234,36 @@ document.addEventListener('DOMContentLoaded', function() {
         paymentAmount.value = payableAmountVal.toFixed(2);
     }
 
-    netWeightKg.addEventListener('input', calculateFields);
-    gunnyWeightKg.addEventListener('input', calculateFields);
-    bags.addEventListener('input', calculateFields);
-    rateBasis.addEventListener('change', calculateFields);
-    rateValue.addEventListener('input', calculateFields);
+    // Attach event listeners for real-time calculations
+    console.log('🔗 Attaching event listeners for calculations...');
 
-    document.querySelectorAll('.calc-input').forEach(input => {
+    if (netWeightKg) {
+        netWeightKg.addEventListener('input', calculateFields);
+        console.log('✅ Event listener attached: netWeightKg');
+    }
+    if (gunnyWeightKg) {
+        gunnyWeightKg.addEventListener('input', calculateFields);
+        console.log('✅ Event listener attached: gunnyWeightKg');
+    }
+    if (bags) {
+        bags.addEventListener('input', calculateFields);
+        console.log('✅ Event listener attached: bags');
+    }
+    if (rateBasis) {
+        rateBasis.addEventListener('change', calculateFields);
+        console.log('✅ Event listener attached: rateBasis');
+    }
+    if (rateValue) {
+        rateValue.addEventListener('input', calculateFields);
+        console.log('✅ Event listener attached: rateValue');
+    }
+
+    const calcInputs = document.querySelectorAll('.calc-input');
+    console.log(`🔢 Found ${calcInputs.length} elements with class .calc-input`);
+    calcInputs.forEach(input => {
         input.addEventListener('input', calculateFields);
     });
+    console.log('✅ All .calc-input event listeners attached');
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -267,19 +336,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    clearBtn.addEventListener('click', function() {
-        if (confirm('Are you sure you want to clear the form?')) {
-            form.reset();
-            const now = new Date();
-            const istOffset = 5.5 * 60 * 60 * 1000;
-            const istTime = new Date(now.getTime() + istOffset);
-            dateInput.value = istTime.toISOString().slice(0, 16);
-            fetchNextBillNo();
-            calculateFields();
-        }
-    });
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear the form?')) {
+                console.log('🗑️ Clearing form...');
+                form.reset();
+                const now = new Date();
+                const istOffset = 5.5 * 60 * 60 * 1000;
+                const istTime = new Date(now.getTime() + istOffset);
+                dateInput.value = istTime.toISOString().slice(0, 16);
+                fetchNextBillNo();
+                calculateFields();
+                console.log('✅ Form cleared and reset');
+            }
+        });
+        console.log('✅ Clear button event listener attached');
+    }
 
+    // Initial calculation on page load
+    console.log('🔄 Running initial calculations...');
     calculateFields();
+    console.log('✅ ===== Form initialization complete =====');
 
     // ===== DYNAMIC GODOWN DROPDOWN =====
     const godownInput = document.getElementById('paddy_unloading_godown');
