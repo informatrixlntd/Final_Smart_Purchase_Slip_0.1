@@ -62,12 +62,9 @@ window.handleSaveGodown = function() {
     });
 };
 
-// Global flag to prevent multiple initializations
-let formInitialized = false;
-
-// Main initialization function that can be called anytime
-function initializePurchaseForm() {
-    console.log('✅ initializePurchaseForm() called');
+// SINGLE INITIALIZATION - Form is always in DOM, no dynamic loading
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ DOMContentLoaded event fired');
     console.log('🔍 Initializing Create Purchase Slip form...');
 
     const form = document.getElementById('purchaseForm');
@@ -86,18 +83,6 @@ function initializePurchaseForm() {
     }
     if (!billNoInput) {
         console.error('❌ CRITICAL: bill_no input not found!');
-        return;
-    }
-
-    // Check if already initialized to prevent duplicate event listeners
-    if (formInitialized) {
-        console.log('⚠️ Form already initialized, skipping event listener attachment');
-        // Just update date and bill number for fresh form
-        const now = new Date();
-        const istOffset = 5.5 * 60 * 60 * 1000;
-        const istTime = new Date(now.getTime() + istOffset);
-        dateInput.value = istTime.toISOString().slice(0, 16);
-        console.log('✅ Date refreshed to:', dateInput.value);
         return;
     }
 
@@ -374,9 +359,6 @@ function initializePurchaseForm() {
     calculateFields();
     console.log('✅ ===== Form initialization complete =====');
 
-    // Mark as initialized to prevent duplicate event listeners
-    formInitialized = true;
-
     // ===== DYNAMIC GODOWN DROPDOWN =====
     const godownInput = document.getElementById('paddy_unloading_godown');
     const godownDatalist = document.getElementById('godownList');
@@ -542,26 +524,7 @@ function initializePurchaseForm() {
     } else {
         console.error('❌ Godown elements missing, skipping loadGodowns()');
     }
-}
-
-// Expose globally so it can be called from app.html after dynamic form load
-window.initializePurchaseForm = initializePurchaseForm;
-
-// Call initialization immediately if DOM is already loaded (for dynamic injection)
-// OR wait for DOMContentLoaded if script loads before DOM ready
-if (document.readyState === 'loading') {
-    console.log('⏳ DOM still loading, waiting for DOMContentLoaded...');
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('✅ DOMContentLoaded event fired');
-        initializePurchaseForm();
-    });
-} else {
-    console.log('✅ DOM already loaded, initializing immediately...');
-    // Use setTimeout to ensure form HTML is fully inserted before accessing elements
-    setTimeout(function() {
-        initializePurchaseForm();
-    }, 100);
-}
+});
 
 // Event delegation fallback - attach to document
 document.addEventListener('click', function(e) {

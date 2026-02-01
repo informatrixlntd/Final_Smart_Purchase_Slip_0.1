@@ -56,22 +56,22 @@ print("[INFO] Setting up Flask paths...")
 if getattr(sys, 'frozen', False):
     # Running as compiled executable - all files are bundled in _MEIPASS
     template_folder = os.path.join(sys._MEIPASS, 'templates')
-    static_folder = os.path.join(sys._MEIPASS, 'desktop', 'static')
-    desktop_folder = os.path.join(sys._MEIPASS, 'desktop')
+    static_folder = os.path.join(sys._MEIPASS, 'frontend', 'static')
+    frontend_folder = os.path.join(sys._MEIPASS, 'frontend')
     print(f"[INFO] Template folder: {template_folder}")
     print(f"[INFO] Static folder: {static_folder}")
-    print(f"[INFO] Desktop folder: {desktop_folder}")
+    print(f"[INFO] Frontend folder: {frontend_folder}")
     print(f"[INFO] Template folder exists: {os.path.exists(template_folder)}")
-    print(f"[INFO] Desktop folder exists: {os.path.exists(desktop_folder)}")
+    print(f"[INFO] Frontend folder exists: {os.path.exists(frontend_folder)}")
     if os.path.exists(template_folder):
         print(f"[INFO] Templates: {os.listdir(template_folder)}")
-    if os.path.exists(desktop_folder):
-        print(f"[INFO] Desktop files: {os.listdir(desktop_folder)}")
+    if os.path.exists(frontend_folder):
+        print(f"[INFO] Frontend files: {os.listdir(frontend_folder)}")
 else:
     # Running in normal Python environment
     template_folder = 'templates'
-    static_folder = '../desktop/static'
-    desktop_folder = '../desktop'
+    static_folder = '../frontend/static'
+    frontend_folder = '../frontend'
 
 print("[INFO] Creating Flask app...")
 app = Flask(__name__,
@@ -109,22 +109,19 @@ except Exception as e:
 @app.route('/')
 def index():
     """Serve the login page"""
-    return send_from_directory(desktop_folder, 'login.html')
+    return send_from_directory(frontend_folder, 'login.html')
 
 @app.route('/app')
 def app_page():
-    """Serve the main application page"""
-    return send_from_directory(desktop_folder, 'app.html')
+    """Serve the main application page - SINGLE HTML FILE"""
+    return send_from_directory(frontend_folder, 'app.html')
 
-@app.route('/create')
-def create_slip():
-    """Serve the slip creation form"""
-    return send_from_directory(desktop_folder, 'index.html')
+# /create route REMOVED - form is now embedded in app.html
 
 @app.route('/assets/<path:filename>')
 def serve_assets(filename):
     """Serve static assets"""
-    assets_folder = os.path.join(desktop_folder if isinstance(desktop_folder, str) and not desktop_folder.startswith('..') else os.path.join(os.path.dirname(__file__), desktop_folder), 'assets')
+    assets_folder = os.path.join(frontend_folder if isinstance(frontend_folder, str) and not frontend_folder.startswith('..') else os.path.join(os.path.dirname(__file__), frontend_folder), 'assets')
     return send_from_directory(assets_folder, filename)
 
 @app.route('/api/next-bill-no')

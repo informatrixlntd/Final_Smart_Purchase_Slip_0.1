@@ -204,6 +204,31 @@ def add_slip():
 
         slip_date = parse_datetime_to_ist(data.get('date')) or get_ist_datetime()
 
+        # DUPLICATE SUBMISSION PREVENTION
+        # Check if an identical slip was submitted in the last 5 seconds
+        cursor.execute('''
+            SELECT COUNT(*) FROM purchase_slips
+            WHERE party_name = %s
+            AND date = %s
+            AND net_weight_kg = %s
+            AND total_purchase_amount = %s
+            AND created_at >= DATE_SUB(NOW(), INTERVAL 5 SECOND)
+        ''', (
+            data.get('party_name', ''),
+            slip_date,
+            safe_float(data.get('net_weight_kg')),
+            safe_float(data.get('total_purchase_amount'))
+        ))
+
+        duplicate_count = cursor.fetchone()[0]
+        if duplicate_count > 0:
+            conn.close()
+            print(f"[WARNING] Duplicate submission prevented: {data.get('party_name')}, {slip_date}")
+            return jsonify({
+                'success': False,
+                'message': 'Duplicate submission detected. This slip was already saved.'
+            }), 409  # 409 Conflict
+
         print(f"[OK] Calculated fields: payable={data.get('payable_amount')}, total_purchase={data.get('total_purchase_amount')}")
 
         cursor.execute('''
