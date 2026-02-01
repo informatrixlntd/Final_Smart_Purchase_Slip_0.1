@@ -242,6 +242,7 @@ def init_db():
                 prepared_by VARCHAR(255),
                 authorised_sign VARCHAR(255),
                 paddy_unloading_godown TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_date (date),
                 INDEX idx_party_name (party_name(255)),
                 INDEX idx_bill_no (bill_no)
@@ -320,7 +321,8 @@ def init_db():
             'weight_quintal': "DOUBLE DEFAULT 0",
             'weight_khandi': "DOUBLE DEFAULT 0",
             'rate_value': "DOUBLE DEFAULT 0",
-            'total_purchase_amount': "DOUBLE DEFAULT 0"
+            'total_purchase_amount': "DOUBLE DEFAULT 0",
+            'created_at': "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
         }
 
         # Convert date columns to DATETIME
