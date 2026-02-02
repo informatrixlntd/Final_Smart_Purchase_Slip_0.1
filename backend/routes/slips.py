@@ -662,7 +662,7 @@ def generate_slip_pdf(slip_id):
     if not PDF_SERVICE_AVAILABLE:
         return jsonify({
             'success': False,
-            'message': 'PDF generation service is not available. Please install WeasyPrint.'
+            'message': 'PDF generation service is not available. Please install Playwright: pip install playwright && playwright install chromium'
         }), 500
 
     try:

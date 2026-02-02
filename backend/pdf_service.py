@@ -1,101 +1,179 @@
 """
-Centralized PDF Generation Service using xhtml2pdf
-Fast HTML-to-PDF conversion with template support
-Includes disk caching for optimal performance
-Supports Marathi (Devanagari) text with embedded Unicode font
+Centralized PDF Generation Service using Playwright (Chromium)
+Native HTML-to-PDF conversion with full Unicode/Marathi (Devanagari) support
+Zero dependencies on xhtml2pdf or ReportLab - uses browser engine for rendering
+
+ARCHITECTURE:
+- Playwright (Chromium) handles PDF generation via headless browser
+- Async Playwright API wrapped in sync functions for Flask compatibility
+- No temporary files - PDF generated in-memory and streamed to browser
+- Fonts loaded via CSS @font-face in HTML template
+- Chromium's HarfBuzz engine handles complex text shaping (Devanagari)
+
+REQUIREMENTS:
+- pip install playwright
+- playwright install chromium
 """
 import os
-import sys
-import hashlib
+import asyncio
 from io import BytesIO
 from datetime import datetime
-from xhtml2pdf import pisa
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from pytz import timezone
+from jinja2 import Template
 
 from backend.database import get_db_connection
-from backend.routes.slips import format_ist_datetime, calculate_payment_totals
-
-CACHE_DIR = os.path.join(os.path.dirname(__file__), '..', 'pdf_cache')
-os.makedirs(CACHE_DIR, exist_ok=True)
-
-FONT_PATH = os.path.join(os.path.dirname(__file__), 'static', 'fonts', 'NotoSansDevanagari-Regular.ttf')
-FONT_REGISTERED = False
 
 
-def register_devanagari_font():
-    """
-    Register Devanagari Unicode font with ReportLab
-    MUST be called BEFORE pisa.CreatePDF for Marathi text support
-    """
-    global FONT_REGISTERED
-
-    if FONT_REGISTERED:
-        return
-
+def safe_float(value, default=0.0):
+    """Safely convert value to float, return default if conversion fails"""
     try:
-        if not os.path.exists(FONT_PATH):
-            print(f"[WARNING] Font file not found: {FONT_PATH}")
-            return
-
-        pdfmetrics.registerFont(TTFont('NotoSansDevanagari', FONT_PATH))
-        FONT_REGISTERED = True
-        print(f"[OK] Devanagari font registered: {FONT_PATH}")
-    except Exception as e:
-        print(f"[ERROR] Failed to register Devanagari font: {e}")
+        if value is None or value == '':
+            return default
+        return float(value)
+    except (ValueError, TypeError):
+        return default
 
 
-def get_cache_key(slip_id, slip_data):
+def format_ist_datetime(dt):
     """
-    Generate cache key based on slip ID and last update timestamp
-    Returns: cache_key (str), cache_path (str)
+    Format datetime to IST display format DD-MM-YYYY HH:MM
+    Handles None, string ISO dates, and datetime objects
     """
-    timestamp = slip_data.get('updated_at') or slip_data.get('created_at') or datetime.now()
-    if isinstance(timestamp, datetime):
-        timestamp_str = timestamp.strftime('%Y%m%d%H%M%S')
-    else:
-        timestamp_str = str(timestamp)
+    if dt is None:
+        return None
 
-    cache_key = f"slip_{slip_id}_{timestamp_str}"
-    cache_hash = hashlib.md5(cache_key.encode()).hexdigest()
-    cache_filename = f"slip_{slip_id}_{cache_hash}.pdf"
-    cache_path = os.path.join(CACHE_DIR, cache_filename)
+    ist = timezone('Asia/Kolkata')
 
-    return cache_key, cache_path
+    if isinstance(dt, str):
+        try:
+            dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+        except:
+            try:
+                dt = datetime.strptime(dt, '%Y-%m-%d')
+            except:
+                return dt
+
+    if isinstance(dt, datetime):
+        if dt.tzinfo is None:
+            dt = ist.localize(dt)
+        else:
+            dt = dt.astimezone(ist)
+        return dt.strftime('%d-%m-%Y %H:%M')
+
+    return str(dt)
 
 
-def clear_old_cache_files(slip_id):
-    """Remove old cached PDF files for a specific slip"""
-    try:
-        for filename in os.listdir(CACHE_DIR):
-            if filename.startswith(f"slip_{slip_id}_") and filename.endswith('.pdf'):
-                file_path = os.path.join(CACHE_DIR, filename)
-                try:
-                    os.remove(file_path)
-                except:
-                    pass
-    except:
-        pass
+def calculate_payment_totals(data):
+    """
+    Calculate Total Paid Amount and Balance Amount
+    Total Paid = Sum of all 5 instalment amounts
+    Balance = Payable Amount - Total Paid
+
+    Args:
+        data (dict): Slip data dictionary
+
+    Returns:
+        tuple: (total_paid, balance_amount)
+    """
+    payable_amount = safe_float(data.get('payable_amount', 0), 0)
+
+    total_paid = 0.0
+    for i in range(1, 6):
+        instalment_amount = safe_float(data.get(f'instalment_{i}_amount', 0), 0)
+        total_paid += instalment_amount
+
+    total_paid = round(total_paid, 2)
+    balance_amount = round(payable_amount - total_paid, 2)
+
+    return total_paid, balance_amount
+
+
+def get_pdf_filename(slip_data):
+    """
+    Generate standardized PDF filename from slip data
+    Format: Purchase_Slip_PartyName_BillNo.pdf
+    """
+    party_name = slip_data.get('party_name', 'Unknown')
+    bill_no = slip_data.get('bill_no', 'XXXX')
+
+    party_name_safe = "".join(c for c in party_name if c.isalnum() or c in (' ', '_', '-')).strip()
+    party_name_safe = party_name_safe.replace(' ', '_')
+
+    return f"Purchase_Slip_{party_name_safe}_{bill_no}.pdf"
+
+
+async def _generate_pdf_async(html_content):
+    """
+    Internal async function to generate PDF using Playwright
+    Launches Chromium browser, renders HTML, generates PDF in-memory
+
+    Args:
+        html_content (str): Rendered HTML content
+
+    Returns:
+        bytes: PDF content as bytes
+    """
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(
+            headless=True,
+            args=['--disable-dev-shm-usage', '--no-sandbox']
+        )
+
+        try:
+            page = await browser.new_page()
+
+            await page.set_content(html_content, wait_until='networkidle')
+
+            pdf_bytes = await page.pdf(
+                format='A4',
+                print_background=True,
+                margin={
+                    'top': '10mm',
+                    'right': '10mm',
+                    'bottom': '10mm',
+                    'left': '10mm'
+                },
+                prefer_css_page_size=True
+            )
+
+            return pdf_bytes
+
+        finally:
+            await browser.close()
 
 
 def generate_purchase_slip_pdf(slip_id, force_regenerate=False):
     """
-    Generate PDF for a purchase slip using xhtml2pdf with HTML template
-    Includes intelligent caching for fast repeated access
+    Generate PDF for a purchase slip using Playwright/Chromium
+    Main entry point for PDF generation - called by Flask routes
+
+    WORKFLOW:
+    1. Fetch slip data from database
+    2. Calculate payment totals and format dates
+    3. Render HTML template with slip data
+    4. Launch Chromium via Playwright
+    5. Generate PDF from HTML (in-memory)
+    6. Return PDF as BytesIO stream
 
     Args:
-        slip_id (int): ID of the slip
-        force_regenerate (bool): Force PDF regeneration even if cached
+        slip_id (int): ID of the slip to generate PDF for
+        force_regenerate (bool): Ignored (kept for API compatibility)
 
     Returns:
-        BytesIO: PDF content as bytes
+        BytesIO: PDF content as bytes stream
+
+    Raises:
+        ValueError: If slip not found
+        Exception: If PDF generation fails
     """
     conn = None
     cursor = None
 
     try:
+        print(f"[INFO] Generating PDF for slip ID: {slip_id}")
+
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute('SELECT * FROM purchase_slips WHERE id = %s', (slip_id,))
@@ -110,48 +188,37 @@ def generate_purchase_slip_pdf(slip_id, force_regenerate=False):
 
         slip['date_formatted'] = format_ist_datetime(slip.get('date')) if slip.get('date') else '-'
 
-        cache_key, cache_path = get_cache_key(slip_id, slip)
+        for i in range(1, 6):
+            date_key = f'instalment_{i}_date'
+            if slip.get(date_key):
+                slip[f'instalment_{i}_date_formatted'] = format_ist_datetime(slip[date_key])
 
-        if not force_regenerate and os.path.exists(cache_path):
-            print(f"[CACHE HIT] Returning cached PDF for slip {slip_id}")
-            with open(cache_path, 'rb') as f:
-                pdf_bytes = BytesIO(f.read())
-            return pdf_bytes
-
-        print(f"[CACHE MISS] Generating new PDF for slip {slip_id}")
-
-        clear_old_cache_files(slip_id)
-
-        register_devanagari_font()
-
-        template_path = os.path.join(os.path.dirname(__file__), 'templates', 'print_template_new.html')
+        template_path = os.path.join(
+            os.path.dirname(__file__),
+            'templates',
+            'print_template_new.html'
+        )
 
         with open(template_path, 'r', encoding='utf-8') as f:
             template_content = f.read()
 
-        html_content = render_template_string(template_content, slip=slip)
+        template = Template(template_content)
+        html_content = template.render(slip=slip)
 
-        html_bytes = html_content.encode('utf-8')
+        print(f"[OK] HTML template rendered successfully")
 
-        pdf_buffer = BytesIO()
-
-        pisa_status = pisa.CreatePDF(
-            html_bytes,
-            dest=pdf_buffer,
-            encoding='utf-8'
-        )
-
-        if pisa_status.err:
-            raise Exception(f'PDF generation failed with error code: {pisa_status.err}')
-
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
-            with open(cache_path, 'wb') as f:
-                f.write(pdf_buffer.getvalue())
-            print(f"[OK] PDF cached at: {cache_path}")
-        except Exception as e:
-            print(f"[WARNING] Could not cache PDF: {e}")
+            pdf_bytes = loop.run_until_complete(_generate_pdf_async(html_content))
+        finally:
+            loop.close()
 
+        print(f"[OK] PDF generated successfully ({len(pdf_bytes)} bytes)")
+
+        pdf_buffer = BytesIO(pdf_bytes)
         pdf_buffer.seek(0)
+
         return pdf_buffer
 
     except Exception as e:
@@ -167,28 +234,10 @@ def generate_purchase_slip_pdf(slip_id, force_regenerate=False):
             conn.close()
 
 
-def render_template_string(template_content, **context):
-    """
-    Simple template renderer using Jinja2-like syntax
-    Replaces {{ variable }} with actual values
-    """
-    from jinja2 import Template
-    template = Template(template_content)
-    return template.render(**context)
-
-
-def get_pdf_filename(slip_data):
-    """Generate standardized PDF filename"""
-    party_name = slip_data.get('party_name', 'Unknown')
-    bill_no = slip_data.get('bill_no', 'XXXX')
-
-    party_name_safe = "".join(c for c in party_name if c.isalnum() or c in (' ', '_', '-')).strip()
-    party_name_safe = party_name_safe.replace(' ', '_')
-
-    return f"Purchase_Slip_{party_name_safe}_{bill_no}.pdf"
-
-
 def invalidate_cache(slip_id):
-    """Invalidate cached PDF for a slip (call after update)"""
-    clear_old_cache_files(slip_id)
-    print(f"[OK] Cache invalidated for slip {slip_id}")
+    """
+    Cache invalidation stub - kept for API compatibility
+    Playwright generates PDFs on-demand, no caching needed
+    """
+    print(f"[INFO] Cache invalidation called for slip {slip_id} (no-op with Playwright)")
+    pass

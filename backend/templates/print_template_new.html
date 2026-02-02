@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Purchase Slip - {{ slip.bill_no }}</title>
   <style>
+    /* DEVANAGARI FONT SUPPORT - Required for Marathi text rendering */
+    @font-face {
+        font-family: 'NotoSansDevanagari';
+        src: url('https://fonts.gstatic.com/s/notosansdevanagari/v26/TuGUUFZR0oWPzKqSPqWOXPAR8Wb_C_rmODY.woff2') format('woff2');
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+    }
+
     * {
         margin: 0;
         padding: 0;
@@ -47,7 +56,7 @@
     }
 
     body {
-        font-family: Arial, sans-serif;
+        font-family: 'NotoSansDevanagari', Arial, sans-serif;
         line-height: 1.1;
         color: #000;
         background: #fff;
